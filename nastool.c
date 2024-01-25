@@ -46,6 +46,12 @@ void convert_nanosec_to_time_t(uint64_t *from, time_t *to)
     *to = mktime(&easternTime);
 }
 
+int msg2fixedfld(FIXEDFLD *fixedfld, int offset, size_t size)
+{
+    
+
+}
+
 /***************************/
 /* Message Buffer Function */
 /***************************/

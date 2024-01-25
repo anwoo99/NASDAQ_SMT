@@ -13,12 +13,25 @@
 
 typedef struct
 {
-    unsigned char buffer[MAX_BUFFER_SIZE];
+    char buffer[MAX_BUFFER_SIZE];
     int offset;
     size_t read_size;
     size_t rest_size;
     size_t msgl;
 } MSGBUFF;
+
+/*******************************/
+/* FIXEDFLD for NASDAQ message */
+/*******************************/
+typedef struct
+{
+    char field_name[MAX_BUFFER_SIZE];
+    uint64_t uval;
+    int64_t ival;
+    double dval;
+    char cval;
+    char sval[MAX_BUFFER_SIZE];
+} FLXEDFLD;
 
 /********************************/
 /* TR Message Defined by Corise */
@@ -32,7 +45,7 @@ typedef struct
 typedef struct
 {
     TR_HEADER header;
-    unsigned char pkt_buff[MAX_BUFFER_SIZE];
+    char pkt_buff[MAX_BUFFER_SIZE];
     size_t pkt_l;
 } TR_PACKET;
 #define TR_PACKET_LEN sizeof(TR_PACKET)
@@ -50,7 +63,7 @@ typedef struct
 typedef struct
 {
     size_t msgl;
-    unsigned char data[MAX_BUFFER_SIZE];
+    char data[MAX_BUFFER_SIZE];
 } MSG_BLOCK;
 
 // 3. Heartbeats
@@ -449,19 +462,19 @@ typedef struct
 /* nastool.c */
 /*************/
 // Convert Function
-void convert_big_endian_to_uint64_t(unsigned char *from, uint64_t *to, size_t size);
-void convert_big_endian_to_int64_t(unsigned char *from, int64_t *to, size_t size);
+void convert_big_endian_to_uint64_t(char *from, uint64_t *to, size_t size);
+void convert_big_endian_to_int64_t(char *from, int64_t *to, size_t size);
 void convert_nanosec_to_time_t(uint64_t *from, time_t *to);
 
 // Message Buffer
 int uint64_t_read_msg_buff(MSGBUFF *msgbuff, uint64_t *value, size_t size);
-int copy_read_msg_buff(MSGBUFF *msgbuff, unsigned char *value, size_t size);
+int copy_read_msg_buff(MSGBUFF *msgbuff, char *value, size_t size);
 int finish_read_msg_buff(MSGBUFF *msgbuff);
 int restore_msg_buff(MSGBUFF *msgbuff, size_t size);
 void initialize_msg_buff(MSGBUFF *msgbuff);
 
 // TR Packet
-int allocate_tr_packet(TR_PACKET *tr_packet, unsigned char *message_data, size_t message_length);
+int allocate_tr_packet(TR_PACKET *tr_packet, char *message_data, size_t message_length);
 void initialize_tr_packet(TR_PACKET *tr_packet);
 
 // Logger
@@ -475,6 +488,6 @@ int parser_moldudp64_message_block(MSGBUFF *msgbuff, MSG_BLOCK *msgblock);
 /*****************/
 /* smartoption.c */
 /*****************/
-int smt_decode(SMARTOPTION_TABLE *smt_table, unsigned int msgtype, unsigned char *msgb, size_t msgl);
+int smt_decode(SMARTOPTION_TABLE *smt_table, unsigned int msgtype, char *msgb, size_t msgl);
 
 #endif

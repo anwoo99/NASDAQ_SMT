@@ -59,43 +59,56 @@ int main(int argc, char **argv)
     return 0;
 }
 
+/*
+ * Function: start_analyze()
+ * -------------------------
+ * Reads a binary test file, parses MoldUDP64 message blocks, and sends TR_PACKETs to a domain socket.
+ *
+ * Returns:
+ *    0 on success, -1 on failure
+ */
 int start_analyze()
 {
-    FILE *file = fopen(NASDAQ_EMI_FILENAME, "rb");
-    MSGBUFF msgbuff;
-    MSG_BLOCK message_block;
-    unsigned char send_b[TR_PACKET_LEN];
     int retv;
-    TR_PACKET *tr_packet = (TR_PACKET *)send_b;
-    SMARTOPTION_TABLE smart_option;
-    long totalFileSize, bytesRead = 0;
-    long curr_read_percent = 0, bef_read_percent = 0;
 
+    // Open the binary file for reading
+    FILE *file = fopen(NASDAQ_EMI_FILENAME, "rb");
     if (file == NULL)
     {
         fep_log(fep, FL_ERROR, "Error opening file(%s)", NASDAQ_EMI_FILENAME);
         exit(EXIT_FAILURE);
     }
 
+    // For tracking file reading progress
+    long totalFileSize, bytesRead = 0;
+    long curr_read_percent = 0, bef_read_percent = 0;
+
     // Obtain total file size
     fseek(file, 0, SEEK_END);
     totalFileSize = ftell(file);
     fseek(file, 0, SEEK_SET);
 
-    initialize_msg_buff(&msgbuff);
-    initialize_tr_packet(tr_packet);
+    // Initialize message buffer and TR_PACKET
+    MSGBUFF msgbuff;
+    MSG_BLOCK message_block;
+    char send_b[TR_PACKET_LEN];
+    TR_PACKET *tr_packet = (TR_PACKET *)send_b;
+    SMARTOPTION_TABLE smart_option;
 
+    // Set up the domain socket
     if (socket_setting() < 0)
     {
         fep_log(fep, FL_ERROR, "Failed to set socket");
         exit(EXIT_FAILURE);
     }
 
+    // Main loop to read and process the file
     while ((msgbuff.read_size = fread(&msgbuff.buffer[msgbuff.rest_size], 1, sizeof(msgbuff.buffer) - msgbuff.rest_size, file)) > 0)
     {
         msgbuff.rest_size += msgbuff.read_size;
         bytesRead += msgbuff.read_size;
 
+        // Process MoldUDP64 message blocks
         while (1)
         {
             retv = parser_moldudp64_message_block(&msgbuff, &message_block);
@@ -112,8 +125,8 @@ int start_analyze()
             }
             else
             {
+                // Allocate TR_PACKET and send to domain socket
                 allocate_tr_packet(tr_packet, message_block.data, message_block.msgl);
-                
                 if (sendto(domain_socket, send_b, TR_PACKET_LEN, 0, (struct sockaddr *)&target_addr, sizeof(target_addr)) < 0)
                 {
                     fep_log(fep, FL_ERROR, "sendto() to '%s' error(%d|%s)", domain_filename, errno, strerror(errno));
@@ -123,7 +136,7 @@ int start_analyze()
             }
         }
 
-        // Print percentage every % 
+        // Print reading progress percentage
         curr_read_percent = (bytesRead * 100 / totalFileSize);
 
         if (bef_read_percent != curr_read_percent)
@@ -133,6 +146,7 @@ int start_analyze()
         }
     }
 
+    // Close the file
     fclose(file);
     return 0;
 }
