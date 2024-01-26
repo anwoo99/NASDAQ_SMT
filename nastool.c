@@ -1,33 +1,51 @@
 #include "nastag.h"
 
-void convert_big_endian_to_uint64_t(unsigned char *from, uint64_t *to, size_t size)
+/********************/
+/* Convert Function */
+/********************/
+
+/*
+ * Function: convert_big_endian_to_int64_t()
+ * -----------------------------------------
+ * 빅엔디안 -> Signed 정수
+ */
+void convert_big_endian_to_int64_t(char *from, int64_t *to, size_t size)
 {
     int ii;
+    int is_signed = (from[0] & 0x80); // 0X80 = '1000 0000'
 
     *to = 0;
     for (ii = 0; ii < size; ii++)
     {
         *to = (*to << 8) | from[ii];
     }
-}
 
-void convert_big_endian_to_int64_t(unsigned char *from, int64_t *to, size_t size)
-{
-    int ii;
-
-    *to = 0;
-    for (ii = 0; ii < size; ii++)
+    /*
+     * INT64_C(value): define a constant of type int64_t
+     * INT64_C(-1) == 0xFFFFFFFFFFFFFFFF(총 64비트 = 8바이트)
+     */
+    if (is_signed)
     {
-        *to = (*to << 8) | from[ii];
-    }
-
-    // Handle sign extension
-    if (from[0] & 0x80)
-    {
+        // Handle sign extension(부호 확장)
         *to |= (INT64_C(-1) << (8 * size));
     }
 }
 
+/*
+ * Function: convert_big_endian_to_uint64_t()
+ * -----------------------------------------
+ * 빅엔디안 -> unsigned 정수
+ */
+void convert_big_endian_to_uint64_t(char *from, uint64_t *to, size_t size)
+{
+    convert_big_endian_to_int64_t(from, (int64_t *)to, size);
+}
+
+/*
+ * Function: convert_nanosec_to_time_t()
+ * -----------------------------------------
+ * 나노초 -> time_t
+ */
 void convert_nanosec_to_time_t(uint64_t *from, time_t *to)
 {
     time_t seconds = *from / 1000000000;
@@ -46,21 +64,57 @@ void convert_nanosec_to_time_t(uint64_t *from, time_t *to)
     *to = mktime(&easternTime);
 }
 
-int msg2fixedfld(FIXEDFLD *fixedfld, int offset, size_t size)
-{
-    
+/********************************/
+/* Fixed Field Mapping Function */
+/********************************/
 
+/*
+ * Function: msg2fixedfld()
+ * -----------------------------------------
+ * 메세지버퍼 -> Fixed Field 파싱
+ */
+int msg2fixedfld(FIXEDFLD *fixedfld, char *msgb, int offset)
+{
+    int64_t ival;
+
+    if (fixedfld->value == NULL)
+        return (0);
+
+    switch (fixedfld->field_type)
+    {
+    case FIXEDFLD_INT:
+        convert_big_endian_to_int64_t(&msgb[offset], (int64_t *)(fixedfld->value), *fixedfld->field_length);
+        break;
+    case FIXEDFLD_UINT:
+    case FIXEDFLD_BITMASK:
+        convert_big_endian_to_uint64_t(&msgb[offset], (uint64_t *)(fixedfld->value), *fixedfld->field_length);
+        break;
+    case FIXEDFLD_STRING:
+        memcpy((char *)(fixedfld->value), &msgb[offset], *(fixedfld->field_length));
+        break;
+    case FIXEDFLD_DECIMAL:
+        convert_big_endian_to_int64_t(&msgb[offset], &ival, *(fixedfld->field_length));
+        ((DECIMAL *)(fixedfld->value))->value = (double)ival / (pow(10, ((DECIMAL *)(fixedfld->value))->denominator));
+        break;
+    case FIXEDFLD_CHAR:
+        *((char *)(fixedfld->value)) = msgb[offset];
+        break;
+    }
+
+    return (0);
 }
 
 /***************************/
 /* Message Buffer Function */
 /***************************/
-int uint64_t_read_msg_buff(MSGBUFF *msgbuff, uint64_t *value, size_t size)
+int read_msg_buff(MSGBUFF *msgbuff, FIXEDFLD *fixedfld, size_t size)
 {
     if (msgbuff->rest_size < size)
         return MSG_BUFFER_SCARCED;
 
-    convert_big_endian_to_uint64_t(&msgbuff->buffer[msgbuff->offset], value, size);
+    *(fixedfld->field_length) = size;
+
+    msg2fixedfld(fixedfld, msgbuff->buffer, msgbuff->offset);
 
     msgbuff->rest_size -= size;
     msgbuff->offset += size;
@@ -68,20 +122,7 @@ int uint64_t_read_msg_buff(MSGBUFF *msgbuff, uint64_t *value, size_t size)
     return 0;
 }
 
-int copy_read_msg_buff(MSGBUFF *msgbuff, unsigned char *value, size_t size)
-{
-    if (msgbuff->rest_size < size)
-        return MSG_BUFFER_SCARCED;
-
-    memcpy(value, &msgbuff->buffer[msgbuff->offset], size);
-
-    msgbuff->rest_size -= size;
-    msgbuff->offset += size;
-    msgbuff->msgl = size;
-    return 0;
-}
-
-int finish_read_msg_buff(MSGBUFF *msgbuff)
+int finish_msg_buff(MSGBUFF *msgbuff)
 {
     memmove(msgbuff->buffer, &msgbuff->buffer[msgbuff->offset], msgbuff->rest_size);
     msgbuff->offset = 0;
@@ -113,7 +154,7 @@ void initialize_msg_buff(MSGBUFF *msgbuff)
 /**********************/
 /* TR Packet Function */
 /**********************/
-int allocate_tr_packet(TR_PACKET *tr_packet, unsigned char *message_data, size_t message_length)
+int allocate_tr_packet(TR_PACKET *tr_packet, char *message_data, size_t message_length)
 {
     tr_packet->header.type = message_data[0];
     memcpy(tr_packet->pkt_buff, message_data, message_length);
@@ -196,50 +237,45 @@ void nas_raw_log(FEP *fep, int level, int flag, char *msgb, int msgl, const char
     }
 }
 
-void nas_raw_csv(FEP *fep, int level, uint64_t type, char *header, const char *format, ...)
+void nas_raw_csv(FEP *fep, int level, int type, char *header, char *message)
 {
     FILE *logF;
     time_t clock;
     struct tm tm, tx;
     struct stat lstat;
-    char loghead[1024 * 8], logmsg[1024 * 8], logpath[128], mode[8];
-    long fileSize;
-    char *msgptr;
-    va_list vl;
+    char logmsg[1024 * 8], logheader[1024 * 8], logpath[128], mode[8];
 
-    if (level > fep->llog || type == 0)
+    if (level > fep->llog)
+    {
         return;
+    }
 
     clock = time(0);
     clock += fep->e2lt;
     localtime_r(&clock, &tm);
 
-    sprintf(logpath, "%s/%s_0x%02X-%d.log", LOG_DIR, fep->exnm, type, tm.tm_wday);
-    sprintf(mode, "a");
+    snprintf(logpath, sizeof(logpath), "%s/%s_0x%02X-%d.csv", LOG_DIR, fep->exnm, type, tm.tm_wday);
+
+    snprintf(mode, sizeof(mode), "a");
 
     if (stat(logpath, &lstat) == 0)
     {
         clock = lstat.st_mtime + fep->e2lt;
         localtime_r(&clock, &tx);
+
         if (tx.tm_yday != tm.tm_yday)
+        {
             strcpy(mode, "w");
+        }
     }
 
-    sprintf(logmsg, "%02d/%02d %02d:%02d:%02d, %s, ", tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, fep->procname);
-
-    va_start(vl, format);
-    msgptr = &logmsg[strlen(logmsg)];
-    vsprintf(msgptr, format, vl);
-    va_end(vl);
+    snprintf(logheader, sizeof(logheader), "Datetime,%s", header);
+    snprintf(logmsg, sizeof(logmsg), "%02d/%02d %02d:%02d:%02d,%s", tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, message);
 
     if ((logF = fopen(logpath, mode)) != NULL)
     {
         if (lstat.st_size == 0)
-        {
-            strcpy(loghead, "Datetime,Process Name,");
-            memcpy(&loghead[strlen(loghead)], header);
-            fprintf(logF, "%s\n", loghead);
-        }
+            fprintf(log, "%s\n", logheader);
 
         fprintf(logF, "%s\n", logmsg);
         fclose(logF);

@@ -4,6 +4,13 @@
 #include "context.h"
 #include <math.h>
 
+// @ DECIMAL
+typedef struct
+{
+    uint64_t denominator;
+    double value;
+} DECIMAL;
+
 /************************************/
 /* Message Buffer Defined by Corise */
 /************************************/
@@ -23,15 +30,22 @@ typedef struct
 /*******************************/
 /* FIXEDFLD for NASDAQ message */
 /*******************************/
+
 typedef struct
 {
     char field_name[MAX_BUFFER_SIZE];
-    uint64_t uval;
-    int64_t ival;
-    double dval;
-    char cval;
-    char sval[MAX_BUFFER_SIZE];
-} FLXEDFLD;
+    int field_type;
+    int *field_length;
+    void *value;
+} FIXEDFLD;
+
+#define MAX_FIXEDFLD_SIZE 1024
+#define FIXEDFLD_UINT 0x01
+#define FIXEDFLD_INT 0x02
+#define FIXEDFLD_DECIMAL 0x04
+#define FIXEDFLD_STRING 0x08
+#define FIXEDFLD_CHAR 0x10
+#define FIXEDFLD_BITMASK 0x20
 
 /********************************/
 /* TR Message Defined by Corise */
@@ -84,13 +98,6 @@ typedef struct
 /***********************/
 // @ MAX_SIZE
 #define MAX_SYMB_LEN 256
-
-// @ DECIMAL
-typedef struct
-{
-    uint64_t denominator;
-    double value;
-} DECIMAL;
 
 // 0. Appendage List
 #define APPEND_ELEMENT_LENGTH_LEN 1
@@ -147,6 +154,7 @@ typedef struct
 
 typedef struct
 {
+    uint64_t msgtype;
     uint64_t timestamp;
     char event_code[SYSTEM_EVENT_EVENTCODE_LEN + 1];
 } SystemEvent;
@@ -161,6 +169,7 @@ typedef struct
 
 typedef struct
 {
+    uint64_t msgtype;
     uint64_t protocol_id;
     uint64_t channel_index;
     uint64_t seconds;
@@ -175,6 +184,7 @@ typedef struct
 
 typedef struct
 {
+    uint64_t msgtype;
     uint64_t locate_code;
     char MIC[MARKET_CENTER_LOCATE_MIC_LEN + 1];
 } MarketCenterLocate;
@@ -192,6 +202,7 @@ typedef struct
 
 typedef struct
 {
+    uint64_t msgtype;
     uint64_t locate_code;
     char country_code[INSTRUMENT_LOCATE_CURRENCYCODE_LEN + 1];
     char currency_code[INSTRUMENT_LOCATE_CURRENCYCODE_LEN + 1];
@@ -229,6 +240,7 @@ typedef struct
 
 #define NBBO_INSTRUMENT_LOCATE_LEN 4
 #define NBBO_DEPTH_MARKET_CENTER_LEN 2
+#define NBBO_DEPTH_DENOMINATOR_LEN 1
 #define NBBO_FLAGS_LEN 1
 #define NBBO_SIDE_LEN 1
 #define NBBO_RFU_LEN 1
@@ -282,6 +294,7 @@ typedef struct
 #define TRADE_REPORT_FLAGS_LEN 2
 #define TRADE_CHANGE_FLAGS_LEN 1
 #define TRADE_CANCEL_FLAGS_LEN 1
+#define TRADE_DENOMINATOR_LEN 1
 
 // 11. Trade Short Form
 #define SHORT_TRADE_MSG_TYPE 0x70
@@ -322,14 +335,14 @@ typedef struct
 } VALUE_UPDATE;
 
 // 16. Instrument Status
-#define TRADE_ACTION_MSG_TYPE 0x90
-#define TRADE_ACTION_INSTRUMENT_LOCATE_LEN 4
-#define TRADE_ACTION_MARKET_CENTER_LOCATE_LEN 2
-#define TRADE_ACTION_STATUS_TYPE_LEN 1
-#define TRADE_ACTION_STATUS_CODE_LEN 1
-#define TRADE_ACTION_REASON_CODE_LEN 1
-#define TRADE_ACTION_STATUS_FLAGS_LEN 1
-#define TRADE_ACTION_REASON_DETAIL_LENGTH_LEN 1
+#define INSTRUMENT_STATUS_MSG_TYPE 0x90
+#define INSTRUMENT_STATUS_INSTRUMENT_LOCATE_LEN 4
+#define INSTRUMENT_STATUS_MARKET_CENTER_LOCATE_LEN 2
+#define INSTRUMENT_STATUS_STATUS_TYPE_LEN 1
+#define INSTRUMENT_STATUS_STATUS_CODE_LEN 1
+#define INSTRUMENT_STATUS_REASON_CODE_LEN 1
+#define INSTRUMENT_STATUS_STATUS_FLAGS_LEN 1
+#define INSTRUMENT_STATUS_REASON_DETAIL_LENGTH_LEN 1
 
 typedef struct
 {
@@ -375,6 +388,7 @@ typedef struct
 
 typedef struct
 {
+    uint64_t msgtype;
     uint64_t protocol_id;   // Source Protocol ID
     uint64_t channel_index; // Source Channel Index
     uint64_t message_flag;
@@ -400,6 +414,7 @@ typedef struct
 
 typedef struct
 {
+    uint64_t msgtype;
     uint64_t locate_code;
 
     /* Appendage List Information */
@@ -422,12 +437,14 @@ typedef struct
 
 typedef struct
 {
+    uint64_t msgtype;
     uint64_t root_code_locate;
     uint64_t component_index;
     uint64_t component_total;
     uint64_t deliverable_units;
     uint64_t settlement_method;
-    DECIMAL fixed_amount;
+    uint64_t fixed_amount_denominator;
+    uint64_t fixed_amount_numerator;
     char currency_code[OPTION_DELIVERY_COMPONENT_CURRENCY_CODE_LEN + 1];
     DECIMAL strike_percent;
     uint64_t component_symbol_locate;
@@ -440,6 +457,7 @@ typedef struct
     OPTION_DELIVERY option_delivery;
 } ReferenceData;
 
+#define MAX_LOG_MSG 1024 * 8
 // Total Table
 typedef struct
 {
@@ -448,7 +466,8 @@ typedef struct
     int logflag;
     int (*proc)(FEP *, TOKEN *, FIXFLD *, int, int);
     uint64_t type;
-    char logmsg[1024 * 8];
+    char loghead[MAX_LOG_MSG];
+    char logmsg[MAX_LOG_MSG];
     SystemEvent system_event;                // 0x20
     ChannelSeconds channel_seconds;          // 0x22
     MarketCenterLocate market_center_locate; // 0x30
@@ -467,9 +486,8 @@ void convert_big_endian_to_int64_t(char *from, int64_t *to, size_t size);
 void convert_nanosec_to_time_t(uint64_t *from, time_t *to);
 
 // Message Buffer
-int uint64_t_read_msg_buff(MSGBUFF *msgbuff, uint64_t *value, size_t size);
-int copy_read_msg_buff(MSGBUFF *msgbuff, char *value, size_t size);
-int finish_read_msg_buff(MSGBUFF *msgbuff);
+int read_msg_buff(MSGBUFF *msgbuff, FIXEDFLD *fixedfld, size_t size);
+int finish_msg_buff(MSGBUFF *msgbuff);
 int restore_msg_buff(MSGBUFF *msgbuff, size_t size);
 void initialize_msg_buff(MSGBUFF *msgbuff);
 
@@ -479,6 +497,7 @@ void initialize_tr_packet(TR_PACKET *tr_packet);
 
 // Logger
 void nas_raw_log(FEP *fep, int level, int flag, char *msgb, int msgl, const char *format, ...);
+void nas_raw_csv(FEP *fep, int level, int type, char *header, char *message);
 
 /*************/
 /* moldudp.c */

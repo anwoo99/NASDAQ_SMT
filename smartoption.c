@@ -1,7 +1,7 @@
 #include "nastag.h"
 
 /* Appendage List */
-int get_append_header(unsigned char *msgb, AppendHeader *header)
+int get_append_header(char *msgb, AppendHeader *header)
 {
     int offset = 0;
 
@@ -19,7 +19,7 @@ int get_append_header(unsigned char *msgb, AppendHeader *header)
     return (0);
 }
 
-int get_append_decimal(unsigned char *msgb, AppendHeader *header, double *value, uint64_t *denominator)
+int get_append_decimal(char *msgb, AppendHeader *header, double *value, uint64_t *denominator)
 {
     int offset = 0;
     int64_t decimal;
@@ -54,7 +54,7 @@ int get_append_decimal(unsigned char *msgb, AppendHeader *header, double *value,
     return (0);
 }
 
-int get_append_numeric(unsigned char *msgb, AppendHeader *header, int64_t *valueInt, uint64_t *valueUint)
+int get_append_numeric(char *msgb, AppendHeader *header, int64_t *valueInt, uint64_t *valueUint)
 {
     int offset = 0;
     int value_size;
@@ -81,7 +81,7 @@ int get_append_numeric(unsigned char *msgb, AppendHeader *header, int64_t *value
     return (0);
 }
 
-int get_append_date(unsigned char *msgb, AppendHeader *header, uint64_t *date)
+int get_append_date(char *msgb, AppendHeader *header, uint64_t *date)
 {
     uint64_t month, day, year;
     int offset = 0;
@@ -115,7 +115,48 @@ int get_append_date(unsigned char *msgb, AppendHeader *header, uint64_t *date)
     return (0);
 }
 
-int _smt_appendage_list(SMARTOPTION_TABLE *smt_table, unsigned char *msgb, int msgl, int offset)
+int _smt_csv(SMARTOPTION_TABLE *smt_table, FIXEDFLD *fixedfld)
+{
+    int ii = 0;
+    int head_l, msg_l;
+
+    for (ii = 0; fixedfld[ii].field_name != NULL; ii++)
+    {
+        head_l = strlen(smt_table->loghead);
+        sprintf(&smt_table->loghead[head_l], "%s,", fixedfld[ii].field_name);
+
+        msg_l = strlen(smt_table->logmsg);
+
+        switch (fixedfld[ii].field_type)
+        {
+        case FIXEDFLD_UINT:
+            sprintf(&smt_table->logmsg[msg_l], "%lu,", *((uint64_t *)(fixedfld[ii].value)));
+            break;
+        case FIXEDFLD_INT:
+            sprintf(&smt_table->logmsg[msg_l], "%ld,", *((int64_t *)(fixedfld[ii].value)));
+            break;
+        case FIXEDFLD_DECIMAL:
+            sprintf(&smt_table->logmsg[msg_l], "%.*f,", *((DECIMAL *)(fixedfld[ii].value))->denominator, *((DECIMAL *)(fixedfld[ii].value))->value);
+            break;
+        case FIXEDFLD_STRING:
+            sprintf(&smt_table->logmsg[msg_l], "%s,", (char *)(fixedfld[ii].value));
+            break;
+        case FIXEDFLD_CHAR:
+            sprintf(&smt_table->logmsg[msg_l], "%c,", *(char *)(fixedfld[ii].value));
+            break;
+        case FIXEDFLD_BITMASK:
+            sprintf(&smt_table->logmsg[msg_l], "0x%0*lX,", *(int *)(fixedfld[ii].field_length), *((uint64_t *)(fixedfld[ii].value)));
+            break;
+        default:
+            strcpy(&smt_table->logmsg[msg_l], ",");
+            break;
+        }
+    }
+
+    return (0);
+}
+
+int _smt_appendage_list(SMARTOPTION_TABLE *smt_table, char *msgb, int msgl, int *offset)
 {
     InstrumentLocate *instrumentLocate = &smt_table->instrument_locate;
     TRADE *trade = &smt_table->market_data.trade;
@@ -123,13 +164,13 @@ int _smt_appendage_list(SMARTOPTION_TABLE *smt_table, unsigned char *msgb, int m
     METADATA *meta = &smt_table->reference.meta_data;
     AppendHeader header;
 
-    while (offset < (msgl - 1))
+    while (*offset < (msgl - 1))
     {
         memset(&header, 0x00, sizeof(AppendHeader));
 
         // 1. Header
-        get_append_header(&msgb[offset], &header);
-        offset += (APPEND_ELEMENT_LENGTH_LEN + APPEND_FORMATCODE_LEN + APPEND_VALUETYPECODE_LEN);
+        get_append_header(&msgb[*offset], &header);
+        *offset += (APPEND_ELEMENT_LENGTH_LEN + APPEND_FORMATCODE_LEN + APPEND_VALUETYPECODE_LEN);
 
         // 2. Element
         switch (header.value_type_code)
@@ -137,179 +178,94 @@ int _smt_appendage_list(SMARTOPTION_TABLE *smt_table, unsigned char *msgb, int m
         case ROOT_SYMBOL_VALUE_TYPE: // 1 / String / Instrument Locate
             if (header.format_code != STRING_FORMAT_CODE)
                 break;
-            memcpy(instrumentLocate->root, &msgb[offset], header.element_length);
+            memcpy(instrumentLocate->root, &msgb[*offset], header.element_length);
             break;
         case PUT_CALL_VALUE_TYPE: // 2 /Char / Instrument Locate
             if (header.format_code != CHAR_FORMAT_CODE)
                 break;
-            memcpy(instrumentLocate->put_or_call, &msgb[offset], header.element_length);
+            memcpy(instrumentLocate->put_or_call, &msgb[*offset], header.element_length);
             break;
         case EXPIRATION_DATE_VALUE_TYPE: // 3 / Date / Instrument Locate
-            get_append_date(&msgb[offset], &header, &instrumentLocate->expiration_date);
+            get_append_date(&msgb[*offset], &header, &instrumentLocate->expiration_date);
             break;
         case STRIKE_PRICE_VALUE_TYPE: // 4 / Decimal / Insturment Locate
-            get_append_decimal(&msgb[offset], &header, &instrumentLocate->strike.value, &instrumentLocate->strike.denominator);
+            get_append_decimal(&msgb[*offset], &header, &instrumentLocate->strike.value, &instrumentLocate->strike.denominator);
             break;
         case HIGH_PRICE_VALUE_TYPE: // 65 / Decimal / Value Update
-            get_append_decimal(&msgb[offset], &header, &valueUpdate->high.value, &valueUpdate->high.denominator);
+            get_append_decimal(&msgb[*offset], &header, &valueUpdate->high.value, &valueUpdate->high.denominator);
             break;
         case LOW_PRICE_VALUE_TYPE: // 66 / Decimal / Value Update
-            get_append_decimal(&msgb[offset], &header, &valueUpdate->low.value, &valueUpdate->low.denominator);
+            get_append_decimal(&msgb[*offset], &header, &valueUpdate->low.value, &valueUpdate->low.denominator);
             break;
         case LAST_PRICE_VALUE_TYPE: // 67 / Decimal / Value Update
-            get_append_decimal(&msgb[offset], &header, &valueUpdate->last.value, &valueUpdate->last.denominator);
+            get_append_decimal(&msgb[*offset], &header, &valueUpdate->last.value, &valueUpdate->last.denominator);
             break;
         case OPEN_PRICE_VALUE_TYPE: // 68 / Decimal / Value Update
-            get_append_decimal(&msgb[offset], &header, &valueUpdate->open.value, &valueUpdate->open.denominator);
+            get_append_decimal(&msgb[*offset], &header, &valueUpdate->open.value, &valueUpdate->open.denominator);
             break;
         case TOTAL_VOLUME_VALUE_TYPE: // 70 / Numeric / Value Update
-            get_append_numeric(&msgb[offset], &header, NULL, &valueUpdate->total_volume);
+            get_append_numeric(&msgb[*offset], &header, NULL, &valueUpdate->total_volume);
             break;
         case NET_CHANGE_VALUE_TYPE: // 71 / Decimal / Value Update
-            get_append_decimal(&msgb[offset], &header, &valueUpdate->net_change.value, &valueUpdate->net_change.denominator);
+            get_append_decimal(&msgb[*offset], &header, &valueUpdate->net_change.value, &valueUpdate->net_change.denominator);
             break;
         case OPEN_INTEREST_VALUE_TYPE: // 72 / Numeric / Value Update
-            get_append_numeric(&msgb[offset], &header, NULL, &valueUpdate->open_interest);
+            get_append_numeric(&msgb[*offset], &header, NULL, &valueUpdate->open_interest);
             break;
         case TICK_VALUE_TYPE: // 73 / Decimal / Value Update
-            get_append_decimal(&msgb[offset], &header, &valueUpdate->tick.value, &valueUpdate->tick.denominator);
+            get_append_decimal(&msgb[*offset], &header, &valueUpdate->tick.value, &valueUpdate->tick.denominator);
             break;
         case BID_VALUE_TYPE: // 74 / Decimal / Value Update
-            get_append_decimal(&msgb[offset], &header, &valueUpdate->bid.value, &valueUpdate->bid.denominator);
+            get_append_decimal(&msgb[*offset], &header, &valueUpdate->bid.value, &valueUpdate->bid.denominator);
             break;
         case ASK_VALUE_TYPE: // 75 / Decimal / Value Update
-            get_append_decimal(&msgb[offset], &header, &valueUpdate->ask.value, &valueUpdate->ask.denominator);
+            get_append_decimal(&msgb[*offset], &header, &valueUpdate->ask.value, &valueUpdate->ask.denominator);
             break;
         case PARENT_SYMBOL_LOCATE_VALUE_TYPE: //  81 / Numeric / Instrument Locate
-            get_append_numeric(&msgb[offset], &header, NULL, &instrumentLocate->parent_locate_code);
-            get_append_numeric(&msgb[offset], &header, NULL, &meta->parent_symbol_locate);
+            get_append_numeric(&msgb[*offset], &header, NULL, &instrumentLocate->parent_locate_code);
+            get_append_numeric(&msgb[*offset], &header, NULL, &meta->parent_symbol_locate);
             break;
         case UNDERLYING_PRICE_VALUE_TYPE: // 100 / Decimal / Value Update
-            get_append_decimal(&msgb[offset], &header, &valueUpdate->underlying_price.value, &valueUpdate->underlying_price.denominator);
+            get_append_decimal(&msgb[*offset], &header, &valueUpdate->underlying_price.value, &valueUpdate->underlying_price.denominator);
             break;
         case UPSTREAM_CONDITION_DETAILS_VALUE_TYPE: // 143 / String / Trades, Trade Cancel
             if (header.format_code != STRING_FORMAT_CODE)
                 break;
-            memcpy(trade->upstream_condition_detail, &msgb[offset], header.element_length);
+            memcpy(trade->upstream_condition_detail, &msgb[*offset], header.element_length);
             break;
         case TRADE_REPORT_DETAIL_VALUE_TYPE: // 145 / Byte Enum / Trades, Trade Cancel
             if (header.format_code != BYTE_VALUE_FORMAT_CODE)
                 break;
-            trade->trade_report_detail = (unsigned char)msgb[offset];
+            trade->trade_report_detail = (unsigned char)msgb[*offset];
             break;
         case EXTENDED_REPORT_FLAGS_VALUE_TYPE: // 146 / Numeric / Trades, Trade Cancel
-            get_append_numeric(&msgb[offset], &header, NULL, &trade->extended_report_flags);
+            get_append_numeric(&msgb[*offset], &header, NULL, &trade->extended_report_flags);
             break;
         default:
             break;
         }
-        offset += header.element_length;
+        *offset += header.element_length;
     }
 
     return (0);
 }
 
-/* System Event Message(0x20) */
-int smt_0x20_decode(SMARTOPTION_TABLE *smt_table, unsigned char *msgb, int msgl)
+void _smt_decode_field(FIXEDFLD *fixedfld, char *msgb, int *offset, int fldnum)
 {
-    SystemEvent *systemEvent = &smt_table->system_event;
-    int offset = SYSTEM_EVENT_MSG_TYPE_LEN;
-
-    // 1. Timestamp
-    convert_big_endian_to_uint64_t(&msgb[offset], &systemEvent->timestamp, SYSTEM_EVENT_TIMESTAMP_LEN);
-    offset += SYSTEM_EVENT_TIMESTAMP_LEN;
-
-    // 2. Event Code
-    memcpy(systemEvent->event_code, &msgb[offset], SYSTEM_EVENT_EVENTCODE_LEN);
-
-    // # Log Message
-    sprintf(smt_table->logmsg, "Timestamp=%lu|Event Code=%s", systemEvent->timestamp, systemEvent->event_code);
-
-    return (0);
+    msg2fixedfld(&fixedfld[fldnum], msgb, *offset);
+    *offset += *(fixedfld[fldnum].field_length);
 }
 
-/* Channel Seconds Message(0x22) */
-int smt_0x22_decode(SMARTOPTION_TABLE *smt_table, unsigned char *msgb, int msgl)
+void _smt_decode_fields(FIXEDFLD *fixedfld, char *msgb, int *offset)
 {
-    ChannelSeconds *channelSeconds = &smt_table->channel_seconds;
-    int offset = CHANNEL_SECONDS_MSG_TYPE_LEN;
+    int fldnum = 0;
 
-    // 1. Protocol ID
-    convert_big_endian_to_uint64_t(&msgb[offset], &channelSeconds->protocol_id, CHANNEL_SECONDS_PROTOCOL_ID_LEN);
-    offset += CHANNEL_SECONDS_PROTOCOL_ID_LEN;
-
-    // 2. Channel Index
-    convert_big_endian_to_uint64_t(&msgb[offset], &channelSeconds->channel_index, CHANNEL_SECONDS_CHANNEL_INDEX_LEN);
-    offset += CHANNEL_SECONDS_CHANNEL_INDEX_LEN;
-
-    // 3. Seconds
-    convert_big_endian_to_uint64_t(&msgb[offset], &channelSeconds->seconds, CHANNEL_SECONDS_SECONDS_LEN);
-
-    // # Log Message
-    sprintf(smt_table->logmsg, "Protocol ID=%lu|Channel Index=%lu|Seconds=%lu", channelSeconds->protocol_id, channelSeconds->channel_index, channelSeconds->seconds);
-
-    return (0);
-}
-
-/* Market Center Locate(0x30) */
-int smt_0x30_decode(SMARTOPTION_TABLE *smt_table, unsigned char *msgb, int msgl)
-{
-    MarketCenterLocate *marketCenterLocate = &smt_table->market_center_locate;
-    int offset = MARKET_CENTER_LOCATE_MSG_TYPE_LEN;
-
-    // 1. Locate Code
-    convert_big_endian_to_uint64_t(&msgb[offset], &marketCenterLocate->locate_code, MARKET_CENTER_LOCATE_LOCATECODE_LEN);
-    offset += MARKET_CENTER_LOCATE_LOCATECODE_LEN;
-
-    // 2. Event Code
-    memcpy(marketCenterLocate->MIC, &msgb[offset], MARKET_CENTER_LOCATE_MIC_LEN);
-
-    // # Log Message
-    sprintf(smt_table->logmsg, "Locate Code=%lu|MIC=%s", marketCenterLocate->locate_code, marketCenterLocate->MIC);
-
-    return (0);
-}
-
-/* Instrument Symbol Locate(0x33) */
-int smt_0x33_decode(SMARTOPTION_TABLE *smt_table, unsigned char *msgb, int msgl)
-{
-    InstrumentLocate *instrumentLocate = &smt_table->instrument_locate;
-    int offset = INSTRUMENT_LOCATE_MSG_TYPE_LEN;
-
-    // 1. Locate Code
-    convert_big_endian_to_uint64_t(&msgb[offset], &instrumentLocate->locate_code, INSTRUMENT_LOCATE_LOCATECODE_LEN);
-    offset += INSTRUMENT_LOCATE_LOCATECODE_LEN;
-
-    // 2. Country Code
-    memcpy(instrumentLocate->country_code, &msgb[offset], INSTRUMENT_LOCATE_COUNTRYCODE_LEN);
-    offset += INSTRUMENT_LOCATE_COUNTRYCODE_LEN;
-
-    // 3. Currency Code
-    memcpy(instrumentLocate->currency_code, &msgb[offset], INSTRUMENT_LOCATE_CURRENCYCODE_LEN);
-    offset += INSTRUMENT_LOCATE_CURRENCYCODE_LEN;
-
-    // 4. MIC
-    memcpy(instrumentLocate->MIC, &msgb[offset], INSTRUMENT_LOCATE_MIC_LEN);
-    offset += INSTRUMENT_LOCATE_MIC_LEN;
-
-    // 5. Product Type
-    convert_big_endian_to_uint64_t(&msgb[offset], &instrumentLocate->product_type, INSTRUMENT_LOCATE_PRODUCTTYPE_LEN);
-    offset += INSTRUMENT_LOCATE_PRODUCTTYPE_LEN;
-
-    // 6. Symbol Length
-    convert_big_endian_to_uint64_t(&msgb[offset], &instrumentLocate->symbol_length, INSTRUMENT_LOCATE_SYMBOLLENGTH_LEN);
-    offset += INSTRUMENT_LOCATE_SYMBOLLENGTH_LEN;
-
-    // 7. Symbol
-    memcpy(instrumentLocate->symbol, &msgb[offset], instrumentLocate->symbol_length);
-    offset += instrumentLocate->symbol_length;
-
-    // 8. Appendage
-    _smt_appendage_list(smt_table, msgb, msgl, offset);
-
-    // # Log Message
-    sprintf(smt_table->logmsg, "Locate Code=%lu|Country Code=%s|Curreny Code=%s|MIC=%s|Product Type=%lu|Symbol Length=%lu|Symbol=%s|Root=%s|Put/Call=%s|Expiration Date=%lu|Strike Price=%.*f|Strike Denominator=%lu|Parent Locate Code=%lu", instrumentLocate->locate_code, instrumentLocate->country_code, instrumentLocate->currency_code, instrumentLocate->MIC, instrumentLocate->product_type, instrumentLocate->symbol_length, instrumentLocate->symbol, instrumentLocate->root, instrumentLocate->put_or_call, instrumentLocate->expiration_date, (int)instrumentLocate->strike.denominator, instrumentLocate->strike.value, instrumentLocate->strike.denominator, instrumentLocate->parent_locate_code);
-    return (0);
+    // Iterate through fields and decode
+    while (fixedfld[fldnum].field_length != NULL)
+    {
+        _smt_decode_field(&fixedfld[fldnum], msgb, offset, fldnum);
+        fldnum++;
+    }
 }
 
 /* Makret Data Header */
@@ -317,30 +273,44 @@ int _smt_market_header_decode(SMARTOPTION_TABLE *smt_table, unsigned char *msgb,
 {
     MarketDataHeader *header = &smt_table->market_data.header;
     int offset = MARKET_HEADER_MSG_TYPE_LEN;
+    FIXEDFLD fixedfld[] = {
+        {"Message Type", FIXEDFLD_UINT, &MARKET_HEADER_MSG_TYPE_LEN, &header->msgtype},
+        {"Protocol ID", FIXEDFLD_UINT, &MARKET_HEADER_PROTOCOLID_LEN, &header->protocol_id},
+        {"Channel Index", FIXEDFLD_UINT, &MARKET_HEADER_CHANNEL_INDEX_LEN, &header->channel_index},
+        {"Message Flags", FIXEDFLD_BITMASK, &MARKET_HEADER_CHANNEL_INDEX_LEN, &header->message_flag},
+        {"Upstream Sequence Number", FIXEDFLD_UINT, &MARKET_HEADER_UPSTREAM_SEQN_LEN, &header->upstream_seqn},
+        {"Upstream Nanos", FIXEDFLD_UINT, &MARKET_HEADER_UPSTREAM_NANOS_LEN, &header->upstream_nanos},
+        {NULL, 0, NULL, NULL}};
 
-    // 1. Protocol ID
-    convert_big_endian_to_uint64_t(&msgb[offset], &header->protocol_id, MARKET_HEADER_PROTOCOLID_LEN);
-    offset += MARKET_HEADER_PROTOCOLID_LEN;
+    // Decode fields
+    _smt_decode_fields(fixedfld, msgb, &offset);
 
-    // 2. Channel Index
-    convert_big_endian_to_uint64_t(&msgb[offset], &header->channel_index, MARKET_HEADER_CHANNEL_INDEX_LEN);
-    offset += MARKET_HEADER_CHANNEL_INDEX_LEN;
-
-    // 3. Message Flags
-    header->message_flag = (unsigned char)msgb[offset];
-    offset += MARKET_HEADER_MESSAGE_FLAG_LEN;
-
-    // 4. Upstream Sequence Number
-    convert_big_endian_to_uint64_t(&msgb[offset], &header->upstream_seqn, MARKET_HEADER_UPSTREAM_SEQN_LEN);
-    offset += MARKET_HEADER_UPSTREAM_SEQN_LEN;
-
-    // 5. Upstream Nanos
-    convert_big_endian_to_uint64_t(&msgb[offset], &header->upstream_nanos, MARKET_HEADER_UPSTREAM_NANOS_LEN);
-    offset += MARKET_HEADER_UPSTREAM_NANOS_LEN;
-
-    sprintf(smt_table->logmsg, "Protocol ID=%lu|Channel Index=%lu|Message Flags=0x%02X|Upstream Sequence Number=%lu|Upstream Nano=%lu|", header->protocol_id, header->channel_index, (int)header->message_flag, header->upstream_seqn, header->upstream_nanos);
+    // # Log Message(CSV)
+    _smt_csv(smt_table, fixedfld);
 
     return (0);
+}
+
+int smt_all_decode(SMARTOPTION_TABLE *smt_table, FIXEDFLD *fixedfld, char *msgb, int msgl, int is_market)
+{
+    int offset = 0;
+
+    if (is_market)
+    {
+        _smt_market_header_decode(smt_table, msgb, msgl);
+        offset += MARKET_HEADER_TOTAL_LEN;
+    }
+
+    // Decode fields
+    _smt_decode_fields(fixedfld, msgb, &offset);
+
+    // Appendage List
+    _smt_appendage_list(smt_table, msgb, msgl, &offset);
+
+    // Log Message(CSV)
+    _smt_csv(smt_table, fixedfld);
+
+    return 0;
 }
 
 /* Market Data: NBBO */
@@ -351,17 +321,26 @@ int smt_nbbo_decode(SMARTOPTION_TABLE *smt_table, unsigned char *msgb, int msgl)
     int ii = 0;
     int price_size = 0, size_size = 0;
     NBBO_DEPTH depth;
-    int denominator_len;
-    int is_extended = 0;
     int64_t price;
+    FIXEDFLD fixedfld[] = {
+        {"Instrument Locate", FIXEDFLD_UINT, &NBBO_INSTRUMENT_LOCATE_LEN, &nbbo->instrument_locate},
+        {"Bid Market Center Locate", FIXEDFLD_UINT, &NBBO_DEPTH_MARKET_CENTER_LEN, &nbbo->bid.market_center_locate},
+        {"Bid Denominator", FIXEDFLD_UINT, &NBBO_DEPTH_DENOMINATOR_LEN, &nbbo->bid.price.denominator},
+        {"Bid Price", FIXEDFLD_DECIMAL, &price_size, &nbbo->bid.price},
+        {"Bid Size", FIXEDFLD_UINT, &size_size, &nbbo->bid.size},
+        {"Ask Market Center Locate", &NBBO_DEPTH_MARKET_CENTER_LEN, &nbbo->ask.market_center_locate},
+        {"Ask Denominator", FIXEDFLD_UINT, &NBBO_DEPTH_DENOMINATOR_LEN, &nbbo->ask.price.denominator},
+        {"Ask Price", FIXEDFLD_DECIMAL, &price_size, &nbbo->ask.price},
+        {"Ask Size", FIXEDFLD_UINT, &size_size, &nbbo->ask.size},
+        {"RFU/Condition", FIXEDFLD_BITMASK, &NBBO_RFU_LEN, &nbbo->condition},
+        {"Flags", FIXEDFLD_BITMASK, &NBBO_FLAGS_LEN, &nbbo->flags}};
 
     // 1. Market Data Standard Header
     _smt_market_header_decode(smt_table, msgb, msgl);
     offset += MARKET_HEADER_TOTAL_LEN;
 
     // 2. Instrument Locate
-    convert_big_endian_to_uint64_t(&msgb[offset], &nbbo->instrument_locate, NBBO_INSTRUMENT_LOCATE_LEN);
-    offset += NBBO_INSTRUMENT_LOCATE_LEN;
+    _smt_decode_field(fixedfld, msgb, &offset, 0);
 
     // 3. DEPTH
     for (ii = 0; ii < nbbo->nside; ii++)
@@ -390,12 +369,10 @@ int smt_nbbo_decode(SMARTOPTION_TABLE *smt_table, unsigned char *msgb, int msgl)
         case EXTENDED_2_SIDED_NBBO_MSG_TYPE:
         case EXTENDED_1_SIDED_NBBO_MSG_TYPE:
             // 3-2. Denominator
-            denominator_len = 1;
             price_size = 8;
             size_size = 4;
-            is_extended = 1;
-            convert_big_endian_to_uint64_t(&msgb[offset], &depth.price.denominator, denominator_len);
-            offset += denominator_len;
+            convert_big_endian_to_uint64_t(&msgb[offset], &depth.price.denominator, NBBO_DEPTH_DENOMINATOR_LEN);
+            offset += NBBO_DEPTH_DENOMINATOR_LEN;
             break;
         default:
             return (-1);
@@ -411,7 +388,7 @@ int smt_nbbo_decode(SMARTOPTION_TABLE *smt_table, unsigned char *msgb, int msgl)
         offset += size_size;
 
         // 3-5. Side
-        if (is_extended)
+        if (nbbo->nside == 1)
         {
             depth.side = (unsigned char)msgb[offset];
             offset += NBBO_SIDE_LEN;
@@ -429,19 +406,16 @@ int smt_nbbo_decode(SMARTOPTION_TABLE *smt_table, unsigned char *msgb, int msgl)
     }
 
     // 4. RFU / Condition
-    if (smt_table->type == SHORT_1_SIDED_NBBO_MSG_TYPE)
-        convert_big_endian_to_uint64_t(&msgb[offset], &nbbo->condition, NBBO_RFU_LEN);
-    offset += NBBO_RFU_LEN;
+    _smt_decode_field(fixedfld, msgb, &offset, 9);
 
     // 5. Flags
-    nbbo->flags = (unsigned char)msgb[offset];
-    offset += NBBO_FLAGS_LEN;
+    _smt_decode_field(fixedfld, msgb, &offset, 10);
 
     // 6. Appendage List(NBBO does not support appendage)
     //_smt_appendage_list(smt_table, msgb, msgl, offset);
 
-    // # Log Message
-    sprintf(&smt_table->logmsg[strlen(smt_table->logmsg)], "Instrument Locate=%lu|Bid Market Center Locate=%lu|Bid Price=%.*f|Bid Denominator=%lu|Bid Size=%lu|Bid Side=%c|Ask Market Center Locate=%lu|Ask Price=%.*f|Ask Denominator=%lu|Ask Size=%lu|Ask Side=%c|Flags=0x%02X", nbbo->instrument_locate, nbbo->bid.market_center_locate, (int)nbbo->bid.price.denominator, nbbo->bid.price.value, nbbo->bid.price.denominator, nbbo->bid.size, nbbo->bid.side, nbbo->ask.market_center_locate, (int)nbbo->ask.price.denominator, nbbo->ask.price.value, nbbo->ask.price.denominator, nbbo->ask.size, nbbo->ask.side, (int)nbbo->flags);
+    // # Log Message(CSV)
+    _smt_csv(smt_table, fixedfld);
 
     return (0);
 }
@@ -452,25 +426,37 @@ int smt_trade_decode(SMARTOPTION_TABLE *smt_table, unsigned char *msgb, int msgl
     TRADE *trade = &smt_table->market_data.trade;
     int offset = 0;
     int64_t price;
-    int denominator_len;
-    int price_size;
-    int size_size;
+    int price_size = 0;
+    int size_size = 0;
+    FIXEDFLD fixedfld[] = {
+        {"Instrument Locate", FIXEDFLD_UINT, &TRADE_INSTRUMENT_LOCATE_LEN, &trade->instrument_locate},
+        {"Market Center Locate", FIXEDFLD_UINT, &TRADE_INSTRUMENT_LOCATE_LEN, &trade->market_center_locate},
+        {"Trade ID", FIXEDFLD_UINT, &TRADE_TRADE_ID_LEN, &trade->trade_id},
+        {"Price Denominator", FIXEDFLD_UINT, &TRADE_DENOMINATOR_LEN, &trade->price.denominator},
+        {"Price", FIXEDFLD_DECIMAL, &price_size, &trade->price},
+        {"Size", FIXEDFLD_UINT, &size_size, &trade->size},
+        {"Price Flags", FIXEDFLD_BITMASK, &TRADE_PRICE_FLAGS_LEN, &trade->price_flags},
+        {"Eligibility Flags", FIXEDFLD_BITMASK, &TRADE_ELIGIBILITY_FLAGS_LEN, &trade->eligibility_flags},
+        {"Report Flags", FIXEDFLD_BITMASK, &TRADE_REPORT_FLAGS_LEN, &trade->report_flags},
+        {"Change Flags", FIXEDFLD_BITMASK, &TRADE_CHANGE_FLAGS_LEN, &trade->change_flags},
+        {"Cancel Flags", FIXEDFLD_BITMASK, &TRADE_CANCEL_FLAGS_LEN, &trade->cancel_flags},
+        {"Upstream Condition Detail", FIXEDFLD_STRING, NULL, &trade->upstream_condition_detail},
+        {"Trade Report Detail", FIXEDFLD_UINT, NULL, &trade->trade_report_detail},
+        {"Extended Report Flag", FIXEDFLD_BITMASK, NULL, &trade->extended_report_flags},
+        {NULL, 0, NULL, NULL}};
 
     // 1. Market Data Standard Header
     _smt_market_header_decode(smt_table, msgb, msgl);
     offset += MARKET_HEADER_TOTAL_LEN;
 
     // 2. Instrument Locate
-    convert_big_endian_to_uint64_t(&msgb[offset], &trade->instrument_locate, TRADE_INSTRUMENT_LOCATE_LEN);
-    offset += TRADE_INSTRUMENT_LOCATE_LEN;
+    _smt_decode_field(fixedfld, msgb, &offset, 0);
 
     // 3. Market Center Locate
-    convert_big_endian_to_uint64_t(&msgb[offset], &trade->market_center_locate, TRADE_MARKET_CENTER_LOCATE_LEN);
-    offset += TRADE_MARKET_CENTER_LOCATE_LEN;
+    _smt_decode_field(fixedfld, msgb, &offset, 1);
 
     // 4. Trade ID
-    convert_big_endian_to_uint64_t(&msgb[offset], &trade->trade_id, TRADE_TRADE_ID_LEN);
-    offset += TRADE_TRADE_ID_LEN;
+    _smt_decode_field(fixedfld, msgb, &offset, 2);
 
     switch (smt_table->type)
     {
@@ -488,405 +474,313 @@ int smt_trade_decode(SMARTOPTION_TABLE *smt_table, unsigned char *msgb, int msgl
         break;
     case EXTENDED_TRADE_MSG_TYPE:
         // 5. Denominator
-        denominator_len = 1;
         price_size = 8;
         size_size = 8;
         trade->trade_type = TRADE_TRADE_TYPE;
-        convert_big_endian_to_uint64_t(&msgb[offset], &trade->price.denominator, denominator_len);
-        offset += denominator_len;
+        _smt_decode_field(fixedfld, msgb, &offset, 3);
         break;
     case TRADE_CANCEL_MSG_TYPE:
         // 5. Denominator
-        denominator_len = 1;
         price_size = 8;
         size_size = 8;
         trade->trade_type = CANCEL_TRADE_TYPE;
-        convert_big_endian_to_uint64_t(&msgb[offset], &trade->price.denominator, denominator_len);
-        offset += denominator_len;
+        _smt_decode_field(fixedfld, msgb, &offset, 3);
         break;
     default:
         return (-1);
     }
 
     // 6. Price
-    convert_big_endian_to_int64_t(&msgb[offset], &price, price_size);
-    trade->price.value = (double)price / (pow(10, trade->price.denominator));
-    offset += price_size;
+    _smt_decode_field(fixedfld, msgb, &offset, 4);
 
     // 7. Size
-    convert_big_endian_to_uint64_t(&msgb[offset], &trade->size, size_size);
-    offset += size_size;
+    _smt_decode_field(fixedfld, msgb, &offset, 5);
 
     // 8. Price Flags
-    trade->price_flags = (unsigned char)msgb[offset];
-    offset += TRADE_PRICE_FLAGS_LEN;
+    _smt_decode_field(fixedfld, msgb, &offset, 6);
 
     // 9. Eligibility Flags
-    trade->eligibility_flags = (unsigned char)msgb[offset];
-    offset += TRADE_ELIGIBILITY_FLAGS_LEN;
+    _smt_decode_field(fixedfld, msgb, &offset, 7);
 
     // 10. Report Flags
-    trade->report_flags = (unsigned char)msgb[offset];
-    offset += TRADE_REPORT_FLAGS_LEN;
+    _smt_decode_field(fixedfld, msgb, &offset, 8);
 
     // 11. Change Flags / Cancel Flags
-    if (trade->trade_type == 'C')
+    if (trade->trade_type != CANCEL_TRADE_TYPE)
     {
-        trade->cancel_flags = (unsigned char)msgb[offset];
-        offset += TRADE_CANCEL_FLAGS_LEN;
-        trade->change_flags = (unsigned char)msgb[offset];
-        offset += TRADE_CHANGE_FLAGS_LEN;
+        _smt_decode_field(fixedfld, msgb, &offset, 9);
     }
     else
     {
-        trade->change_flags = (unsigned char)msgb[offset];
-        offset += TRADE_CHANGE_FLAGS_LEN;
+        _smt_decode_field(fixedfld, msgb, &offset, 10);
     }
 
     // 12. Appendage List
     _smt_appendage_list(smt_table, msgb, msgl, offset);
 
-    // # Log Message
-    sprintf(&smt_table->logmsg[strlen(smt_table->logmsg)], "Instrument Locate=%lu|Market Center Locate=%lu|Trade_id=%lu|Price=%.*f|Denominator=%lu|Size=%lu|Price Flags=0x%02X|Eligibility Flags=0x%02X|Report Flags=0x%04X|Change Flags=0x%02X|Cancel Flags=0x%02X|Upstream Condition Detail=%s|Trade Report Detail=%lu|Extended Report Flags=0x%04X", trade->instrument_locate, trade->market_center_locate, trade->trade_id, (int)trade->price.denominator, trade->price.value, trade->price.denominator, trade->size, (int)trade->price_flags, (int)trade->eligibility_flags, (int)trade->report_flags, (int)trade->change_flags, (int)trade->cancel_flags, trade->upstream_condition_detail, trade->trade_report_detail, (int)trade->extended_report_flags);
+    // # Log Message(CSV)
+    _smt_csv(smt_table, fixedfld);
 
     return (0);
 }
 
-/* Intrument Value Update(0x80) */
-int smt_0x80_decode(SMARTOPTION_TABLE *smt_table, unsigned char *msgb, int msgl)
+int smt_decode(SMARTOPTION_TABLE *smt_table, unsigned int msgtype, char *msgb, size_t msgl)
 {
-    VALUE_UPDATE *valueUpdate = &smt_table->market_data.value_update;
-    int offset = 0;
+    FIXEDFLD fixedfld[];
+    int is_all_decode = 0;
+    int is_market = 0;
 
-    // 1. Market Data Standard Header
-    _smt_market_header_decode(smt_table, msgb, msgl);
-    offset += MARKET_HEADER_TOTAL_LEN;
-
-    // 2. Instrument Locate
-    convert_big_endian_to_uint64_t(&msgb[offset], &valueUpdate->instrument_locate, VALUE_UPDATE_INSTRUMENT_LOCATE_LEN);
-    offset += VALUE_UPDATE_INSTRUMENT_LOCATE_LEN;
-
-    // 3. Market Center Locate
-    convert_big_endian_to_uint64_t(&msgb[offset], &valueUpdate->market_center_locate, VALUE_UPDATE_MARKET_CENTER_LOCATE_LEN);
-    offset += VALUE_UPDATE_MARKET_CENTER_LOCATE_LEN;
-
-    // 4. Value Update Flags
-    convert_big_endian_to_uint64_t(&msgb[offset], &valueUpdate->value_update_flags, VALUE_UPDATE_VALUE_UPDATE_FLAGS_LEN);
-    offset += VALUE_UPDATE_VALUE_UPDATE_FLAGS_LEN;
-
-    // 12. Appendage List
-    _smt_appendage_list(smt_table, msgb, msgl, offset);
-
-    // # Log Message
-    sprintf(smt_table->logmsg, "Instrument Locate=%lu|Market Center Locate=%lu|Value Update Flags=0x%04X|High=%.*f|Low=%.*f|Last=%.*f|Open=%.*f|Total Volume=%lu|Net Change=%.*f|Open Interest=%lu|Tick=%.*f|Bid=%.*f|Ask=%.*f|Underlying Price=%.*f", valueUpdate->instrument_locate, valueUpdate->market_center_locate, (int)valueUpdate->value_update_flags, (int)valueUpdate->high.denominator, valueUpdate->high.value, (int)valueUpdate->low.denominator, valueUpdate->low.value, (int)valueUpdate->last.denominator, valueUpdate->last.value, (int)valueUpdate->open.denominator, valueUpdate->open.value, valueUpdate->total_volume, (int)valueUpdate->net_change.denominator, valueUpdate->net_change.value, valueUpdate->open_interest, (int)valueUpdate->tick.denominator, valueUpdate->tick.value, (int)valueUpdate->bid.denominator, valueUpdate->bid.value, (int)valueUpdate->ask.denominator, valueUpdate->ask.value, (int)valueUpdate->underlying_price.denominator, valueUpdate->underlying_price.value);
-
-    return (0);
-}
-
-/* Instrument Status(0x90) */
-int smt_0x90_decode(SMARTOPTION_TABLE *smt_table, unsigned char *msgb, int msgl)
-{
-    INSTRUMENT_STATUS *instrumentStatus = &smt_table->market_data.instrument_status;
-    int offset = 0;
-
-    // 1. Market Data Standard Header
-    _smt_market_header_decode(smt_table, msgb, msgl);
-    offset += MARKET_HEADER_TOTAL_LEN;
-
-    // 2. Instrument Locate
-    convert_big_endian_to_uint64_t(&msgb[offset], &instrumentStatus->instrument_locate, TRADE_ACTION_INSTRUMENT_LOCATE_LEN);
-    offset += TRADE_ACTION_INSTRUMENT_LOCATE_LEN;
-
-    // 3. Market Center Locate
-    convert_big_endian_to_uint64_t(&msgb[offset], &instrumentStatus->market_center_locate, TRADE_ACTION_MARKET_CENTER_LOCATE_LEN);
-    offset += TRADE_ACTION_MARKET_CENTER_LOCATE_LEN;
-
-    // 4. Status Type
-    convert_big_endian_to_uint64_t(&msgb[offset], &instrumentStatus->status_type, TRADE_ACTION_STATUS_TYPE_LEN);
-    offset += TRADE_ACTION_STATUS_TYPE_LEN;
-
-    // 5. Status Code
-    convert_big_endian_to_uint64_t(&msgb[offset], &instrumentStatus->status_code, TRADE_ACTION_STATUS_CODE_LEN);
-    offset += TRADE_ACTION_STATUS_CODE_LEN;
-
-    // 6. Reason Code
-    convert_big_endian_to_uint64_t(&msgb[offset], &instrumentStatus->reason_code, TRADE_ACTION_REASON_CODE_LEN);
-    offset += TRADE_ACTION_REASON_CODE_LEN;
-
-    // 7. Reason Detail Length
-    instrumentStatus->reason_detail_length = (unsigned char)msgb[offset];
-    offset += TRADE_ACTION_REASON_DETAIL_LENGTH_LEN;
-
-    // 8. Reason Detail
-    memcpy(instrumentStatus->reason_detail, &msgb[offset], instrumentStatus->reason_detail_length);
-    offset += instrumentStatus->reason_detail_length;
-
-    // 9. Appendage List
-    _smt_appendage_list(smt_table, msgb, msgl, offset);
-
-    // # Log Message
-    sprintf(smt_table->logmsg, "Instrument Locate=%lu|Market Center Locate=%lu|Status Type=%lu|Status Code=%lu|Reason Code=%lu|Status Flags=0x%02X|Reason Detail=%s", instrumentStatus->instrument_locate, instrumentStatus->market_center_locate, instrumentStatus->status_type, instrumentStatus->status_code, instrumentStatus->reason_code, (int)instrumentStatus->status_flags, instrumentStatus->reason_detail);
-
-    return (0);
-}
-
-/* Channel Event(0xB0) */
-int smt_0xB0_decode(SMARTOPTION_TABLE *smt_table, unsigned char *msgb, int msgl)
-{
-    CHANNEL_EVENT *channelEvent = &smt_table->market_data.channel_event;
-    int offset = 0;
-
-    // 1. Market Data Standard Header
-    _smt_market_header_decode(smt_table, msgb, msgl);
-    offset += MARKET_HEADER_TOTAL_LEN;
-
-    // 2. Instrument Locate
-    memcpy(channelEvent->instrument_locate, &msgb[offset], CHANNEL_EVENT_INSTRUMENT_LOCATE_LEN);
-    offset += CHANNEL_EVENT_INSTRUMENT_LOCATE_LEN;
-
-    // 3. Market Center Locate
-    convert_big_endian_to_uint64_t(&msgb[offset], &channelEvent->market_center_locate, CHANNEL_EVENT_MARKET_CENTER_LOCATE_LEN);
-
-    // 4. Appendage List
-    _smt_appendage_list(smt_table, msgb, msgl, offset);
-
-    // # Log Message
-    sprintf(smt_table->logmsg, "Instrument Locate=%s|Market Center Locate=%lu", channelEvent->instrument_locate, channelEvent->market_center_locate);
-
-    return (0);
-}
-
-/* Administrative Text(0xB2) */
-int smt_0xB2_decode(SMARTOPTION_TABLE *smt_table, unsigned char *msgb, int msgl)
-{
-    ADMINISTRATIVE_TEXT *admin = &smt_table->market_data.administrative_text;
-    int offset = 0;
-
-    // 1. Market Data Standard Header
-    _smt_market_header_decode(smt_table, msgb, msgl);
-    offset += MARKET_HEADER_TOTAL_LEN;
-
-    // 2. Text Length
-    convert_big_endian_to_uint64_t(&msgb[offset], &admin->text_length, ADMIN_TEXT_TEXT_LENGTH_LEN);
-    offset += ADMIN_TEXT_TEXT_LENGTH_LEN;
-
-    // 3. Text
-    memcpy(admin->text, &msgb[offset], admin->text_length);
-
-    // # Log Message
-    sprintf(smt_table->logmsg, "Text Length=%lu|Text=%s", admin->text_length, admin->text);
-
-    return (0);
-}
-
-/* Instrument Meta Data(0xC0) */
-int smt_0xC0_decode(SMARTOPTION_TABLE *smt_table, unsigned char *msgb, int msgl)
-{
-    METADATA *meta = &smt_table->reference.meta_data;
-    int offset = INSTRUMENT_META_DATA_MSG_TYPE_LEN;
-
-    // 1. Locate Code
-    convert_big_endian_to_uint64_t(&msgb[offset], &meta->locate_code, INSTRUMENT_META_DATA_LOCATE_CODE_LEN);
-    offset += INSTRUMENT_META_DATA_LOCATE_CODE_LEN;
-
-    // 2. Appendage List
-    _smt_appendage_list(smt_table, msgb, msgl, offset);
-
-    // # Log Message
-    sprintf(smt_table->logmsg, "Locate Code=%lu|Parent Locate:%lu", meta->locate_code, meta->parent_symbol_locate);
-
-    return (0);
-}
-
-/* Option delivery component(0xC3) */
-int smt_0xC3_decode(SMARTOPTION_TABLE *smt_table, unsigned char *msgb, int msgl)
-{
-    OPTION_DELIVERY *delivery = &smt_table->reference.option_delivery;
-    int offset = OPTION_DELIVERY_COMPONENT_MSG_TYPE_LEN;
-
-    // 1. Root code locate
-    convert_big_endian_to_uint64_t(&msgb[offset], &delivery->root_code_locate, OPTION_DELIVERY_COMPONENT_ROOT_CODE_LOCATE_LEN);
-    offset += OPTION_DELIVERY_COMPONENT_ROOT_CODE_LOCATE_LEN;
-
-    // 2. Component Index
-    convert_big_endian_to_uint64_t(&msgb[offset], &delivery->component_index, OPTION_DELIVERY_COMPONENT_COMPONENT_INDEX_LEN);
-    offset += OPTION_DELIVERY_COMPONENT_COMPONENT_INDEX_LEN;
-
-    // 3. Component Total
-    convert_big_endian_to_uint64_t(&msgb[offset], &delivery->component_total, OPTION_DELIVERY_COMPONENT_COMPONENT_TOTAL_LEN);
-    offset += OPTION_DELIVERY_COMPONENT_COMPONENT_TOTAL_LEN;
-
-    // 4. Deliverable Units
-    convert_big_endian_to_uint64_t(&msgb[offset], &delivery->deliverable_units, OPTION_DELIVERY_COMPONENT_DELIVERABLE_UNITS_LEN);
-    offset += OPTION_DELIVERY_COMPONENT_DELIVERABLE_UNITS_LEN;
-
-    // 5. Settlement Method
-    convert_big_endian_to_uint64_t(&msgb[offset], &delivery->settlement_method, OPTION_DELIVERY_COMPONENT_SETTLEMENT_METHOD_LEN);
-    offset += OPTION_DELIVERY_COMPONENT_SETTLEMENT_METHOD_LEN;
-
-    // 6. Fixed Amount Denominator
-    convert_big_endian_to_uint64_t(&msgb[offset], &delivery->fixed_amount.denominator, OPTION_DELIVERY_COMPONENT_FIXED_AMOUNT_DENOMINATOR_LEN);
-    offset += OPTION_DELIVERY_COMPONENT_FIXED_AMOUNT_DENOMINATOR_LEN;
-
-    // 7. Fixed Amount Numerator
-    int64_t amount;
-    convert_big_endian_to_int64_t(&msgb[offset], &amount, OPTION_DELIVERY_COMPONENT_FIXED_AMOUNT_NUMERATOR_LEN);
-    delivery->fixed_amount.value = (double)amount / (pow(10, delivery->fixed_amount.denominator));
-    offset += OPTION_DELIVERY_COMPONENT_FIXED_AMOUNT_NUMERATOR_LEN;
-
-    // 8. Currency Code
-    memcpy(delivery->currency_code, &msgb[offset], OPTION_DELIVERY_COMPONENT_CURRENCY_CODE_LEN);
-    offset += OPTION_DELIVERY_COMPONENT_CURRENCY_CODE_LEN;
-
-    // 9. Strike Percent
-    int64_t percent;
-    delivery->strike_percent.denominator = 2;
-    convert_big_endian_to_int64_t(&msgb[offset], &percent, OPTION_DELIVERY_COMPONENT_STRIKE_PERCENT_LEN);
-    delivery->strike_percent.value = (double)percent / (pow(10, delivery->strike_percent.denominator));
-    offset += OPTION_DELIVERY_COMPONENT_STRIKE_PERCENT_LEN;
-
-    // 10. Component Symbol Locate
-    convert_big_endian_to_uint64_t(&msgb[offset], &delivery->component_symbol_locate, OPTION_DELIVERY_COMPONENT_COMPONENT_SYMBOL_LOCATE_LEN);
-    offset += OPTION_DELIVERY_COMPONENT_COMPONENT_SYMBOL_LOCATE_LEN;
-
-    // # Log Message
-    sprintf(smt_table->logmsg, "Root Code Locate=%lu|Component Index=%lu|Component Total=%lu|Deliverable Units=%lu|Settlement Method=%lu|Fixed Amound Denominator=%lu|Fixed Amount Numerator=%.*f|Currency Code=%s|Strike Percent=%.*f|Component Symbol Locate=%lu", delivery->root_code_locate, delivery->component_index, delivery->component_total, delivery->deliverable_units, delivery->settlement_method, delivery->fixed_amount.denominator, (int)delivery->fixed_amount.denominator, delivery->fixed_amount.value, delivery->currency_code, (int)delivery->strike_percent.denominator, delivery->strike_percent.value, delivery->component_symbol_locate);
-
-    return (0);
-}
-
-int smt_decode(SMARTOPTION_TABLE *smt_table, unsigned int msgtype, unsigned char *msgb, size_t msgl)
-{
     memset(smt_table, 0x00, sizeof(SMARTOPTION_TABLE));
     smt_table->type = msgtype;
 
     switch (smt_table->type)
     {
     case SYSTEM_EVENT_MSG_TYPE: // 0x20
+    {
         strcpy(smt_table->name, "System Event");
         smt_table->loglevel = FL_PROGRESS;
         smt_table->logflag = 0;
-        smt_0x20_decode(smt_table, msgb, msgl);
+        is_all_decode = 1;
+        fixedfld = {
+            {"Message Type", FIXEDFLD_BITMASK, &SYSTEM_EVENT_MSG_TYPE_LEN, &smt_table->system_event.msgtype},
+            {"Timestamp", FIXEDFLD_UINT, &SYSTEM_EVENT_TIMESTAMP_LEN, &smt_table->system_event.timestamp},
+            {"Event Code", FIXEDFLD_STRING, &SYSTEM_EVENT_EVENTCODE_LEN, &smt_table->system_event.event_code},
+            {NULL, 0, NULL, NULL}};
         break;
+    }
     case CHANNEL_SECONDS_MSG_TYPE: // 0x22
+    {
         strcpy(smt_table->name, "Channel Seconds");
         smt_table->loglevel = FL_PROGRESS;
         smt_table->logflag = 0;
-        smt_0x22_decode(smt_table, msgb, msgl);
+        is_all_decode = 1;
+        fixedfld = {
+            {"Message Type", FIXEDFLD_BITMASK, &CHANNEL_SECONDS_MSG_TYPE_LEN, &smt_table->channel_seconds.msgtype},
+            {"Protocol ID", FIXEDFLD_UINT, &CHANNEL_SECONDS_PROTOCOL_ID_LEN, &smt_table->channel_seconds.protocol_id},
+            {"Channel Index", FIXEDFLD_UINT, &CHANNEL_SECONDS_CHANNEL_INDEX_LEN, &smt_table->channel_seconds.channel_index},
+            {"Seconds", FIXEDFLD_UINT, &CHANNEL_SECONDS_SECONDS_LEN, &smt_table->channel_seconds.seconds},
+            {NULL, 0, NULL, NULL}};
         break;
+    }
     case MARKET_CENTER_LOCATE_MSG_TYPE: // 0x30
+    {
         strcpy(smt_table->name, "Market Center Locate");
         smt_table->loglevel = FL_PROGRESS;
         smt_table->logflag = 0;
-        smt_0x30_decode(smt_table, msgb, msgl);
+        is_all_decode = 1;
+        fixedfld = {
+            {"Message Type", FIXEDFLD_BITMASK, &MARKET_CENTER_LOCATE_MSG_TYPE_LEN, &smt_table->market_center_locate.msgtype},
+            {"Locate Code", FIXEDFLD_UINT, &MARKET_CENTER_LOCATE_LOCATECODE_LEN, &smt_table->market_center_locate.locate_code},
+            {"MIC", FIXEDFLD_STRING, &MARKET_CENTER_LOCATE_MIC_LEN, &smt_table->market_center_locate.MIC},
+            {NULL, 0, NULL, NULL}};
         break;
+    }
     case INSTRUMENT_LOCATE_MSG_TYPE: // 0x33
+    {
         strcpy(smt_table->name, "Instrument Symbol Locate");
         smt_table->loglevel = FL_PROGRESS;
         smt_table->logflag = 1;
-        smt_0x33_decode(smt_table, msgb, msgl);
+        is_all_decode = 1;
+        fixedfld = {
+            {"Message Type", FIXEDFLD_BITMASK, &MARKET_CENTER_LOCATE_MSG_TYPE_LEN, &smt_table->instrument_locate->msgtype},
+            {"Locate Code", FIXEDFLD_UINT, &INSTRUMENT_LOCATE_LOCATECODE_LEN, &smt_table->instrument_locate.locate_code},
+            {"Country Code", FIXEDFLD_STRING, &INSTRUMENT_LOCATE_COUNTRYCODE_LEN, smt_table->instrument_locate.country_code},
+            {"Currecny Code", FIXEDFLD_STRING, &INSTRUMENT_LOCATE_CURRENCYCODE_LEN, smt_table->instrument_locate.currency_code},
+            {"MIC", FIXEDFLD_STRING, &INSTRUMENT_LOCATE_MIC_LEN, smt_table->instrument_locate.MIC},
+            {"Product Type", FIXEDFLD_UINT, &INSTRUMENT_LOCATE_PRODUCTTYPE_LEN, &smt_table->instrument_locate.product_type},
+            {"Symbol Length", FIXEDFLD_UINT, &INSTRUMENT_LOCATE_SYMBOLLENGTH_LEN, &smt_table->instrument_locate.symbol_length},
+            {"Symbol", FIXEDFLD_STRING, &smt_table->instrument_locate.symbol_length, smt_table->instrument_locate.symbol},
+            {"Root Symbol", FIXEDFLD_STRING, NULL, smt_table->instrument_locate.root},
+            {"Put/Call", FIXEDFLD_STRING, NULL, smt_table->instrument_locate.put_or_call},
+            {"Expiration Date", FIXEDFLD_UINT, NULL, &smt_table->instrument_locate.expiration_date},
+            {"Strike Price", FIXEDFLD_DECIMAL, NULL, &smt_table->instrument_locate.strike},
+            {"Parent Locate Code", FIXEDFLD_UINT, NULL, &smt_table->instrument_locate.parent_locate_code},
+            {NULL, 0, NULL, NULL}};
         break;
+    }
     case SHORT_2_SIDED_NBBO_MSG_TYPE: // 0x60
+    {
         strcpy(smt_table->name, "NBBO(S2)");
         smt_table->loglevel = FL_DEBUG;
         smt_table->logflag = 0;
         smt_table->market_data.nbbo.nside = 2;
         smt_nbbo_decode(smt_table, msgb, msgl);
         break;
+    }
     case LONG_2_SIDED_NBBO_MSG_TYPE: // 0x61
+    {
         strcpy(smt_table->name, "NBBO(L2)");
         smt_table->loglevel = FL_DEBUG;
         smt_table->logflag = 0;
         smt_table->market_data.nbbo.nside = 2;
         smt_nbbo_decode(smt_table, msgb, msgl);
         break;
+    }
     case EXTENDED_2_SIDED_NBBO_MSG_TYPE: // 0x62
+    {
         strcpy(smt_table->name, "NBBO(E2)");
         smt_table->loglevel = FL_DEBUG;
         smt_table->logflag = 0;
         smt_table->market_data.nbbo.nside = 2;
         smt_nbbo_decode(smt_table, msgb, msgl);
         break;
+    }
     case SHORT_1_SIDED_NBBO_MSG_TYPE: // 0x63
+    {
         strcpy(smt_table->name, "NBBO(S1)");
         smt_table->loglevel = FL_DEBUG;
         smt_table->logflag = 0;
         smt_table->market_data.nbbo.nside = 1;
         smt_nbbo_decode(smt_table, msgb, msgl);
         break;
+    }
     case LONG_1_SIDED_NBBO_MSG_TYPE: // 0x64
+    {
         strcpy(smt_table->name, "NBBO(L1)");
         smt_table->loglevel = FL_DEBUG;
         smt_table->logflag = 0;
         smt_table->market_data.nbbo.nside = 1;
         smt_nbbo_decode(smt_table, msgb, msgl);
         break;
+    }
     case EXTENDED_1_SIDED_NBBO_MSG_TYPE: // 0x65
+    {
         strcpy(smt_table->name, "NBBO(E1)");
         smt_table->loglevel = FL_DEBUG;
         smt_table->logflag = 0;
         smt_table->market_data.nbbo.nside = 1;
         smt_nbbo_decode(smt_table, msgb, msgl);
         break;
+    }
     case SHORT_TRADE_MSG_TYPE: // 0x70
+    {
         strcpy(smt_table->name, "Trade(S1)");
         smt_table->loglevel = FL_PROGRESS;
         smt_table->logflag = 0;
         smt_trade_decode(smt_table, msgb, msgl);
         break;
+    }
     case LONG_TRADE_MSG_TYPE: // 0x71
+    {
         strcpy(smt_table->name, "Trade(L1)");
         smt_table->loglevel = FL_PROGRESS;
         smt_table->logflag = 0;
         smt_trade_decode(smt_table, msgb, msgl);
         break;
+    }
     case EXTENDED_TRADE_MSG_TYPE: // 0x72
+    {
         strcpy(smt_table->name, "Trade(E1)");
         smt_table->loglevel = FL_PROGRESS;
         smt_table->logflag = 0;
         smt_trade_decode(smt_table, msgb, msgl);
         break;
+    }
     case TRADE_CANCEL_MSG_TYPE: // 0x73
+    {
         strcpy(smt_table->name, "Cancel");
         smt_table->loglevel = FL_PROGRESS;
         smt_table->logflag = 0;
         smt_trade_decode(smt_table, msgb, msgl);
         break;
+    }
     case VALUE_UPDATE_MSG_TYPE: // 0x80
+    {
         strcpy(smt_table->name, "Value Update");
         smt_table->loglevel = FL_PROGRESS;
         smt_table->logflag = 0;
-        smt_0x80_decode(smt_table, msgb, msgl);
+        is_all_decode = 1;
+        is_market = 1;
+        fixedfld = {
+            {"Instrument Locate", FIXEDFLD_UINT, &VALUE_UPDATE_INSTRUMENT_LOCATE_LEN, &smt_table->market_data.value_update.instrument_locate},
+            {"Market Center Locate", FIXEDFLD_UINT, &VALUE_UPDATE_MARKET_CENTER_LOCATE_LEN, &smt_table->market_data.value_update.market_center_locate},
+            {"Value Update Flags", FIXEDFLD_BITMASK, &VALUE_UPDATE_VALUE_UPDATE_FLAGS_LEN, &smt_table->market_data.value_update.value_update_flags},
+            {"High Price", FIXEDFLD_DECIMAL, NULL, &smt_table->market_data.value_update.high},
+            {"Low Price", FIXEDFLD_DECIMAL, NULL, &smt_table->market_data.value_update.low},
+            {"Last Price", FIXEDFLD_DECIMAL, NULL, &smt_table->market_data.value_update.last},
+            {"Open Price", FIXEDFLD_DECIMAL, NULL, &smt_table->market_data.value_update.open},
+            {"Total Volume", FIXEDFLD_UINT, NULL, &smt_table->market_data.value_update.total_volume},
+            {"Net Change", FIXEDFLD_DECIMAL, NULL, &smt_table->market_data.value_update.net_change},
+            {"Open Interest", FIXEDFLD_UINT, NULL, &smt_table->market_data.value_update.open_interest},
+            {"Tick", FIXEDFLD_DECIMAL, NULL, &smt_table->market_data.value_update.tick},
+            {"Bid", FIXEDFLD_DECIMAL, NULL, &smt_table->market_data.value_update.bid},
+            {"Ask", FIXEDFLD_DECIMAL, NULL, &smt_table->market_data.value_update.ask},
+            {"Underlying Price", FIXEDFLD_DECIMAL, NULL, &smt_table->market_data.value_update.underlying_price},
+            {NULL, 0, NULL, NULL}};
         break;
-    case TRADE_ACTION_MSG_TYPE: // 0x90
+    }
+    case INSTRUMENT_STATUS_MSG_TYPE: // 0x90
+    {
         strcpy(smt_table->name, "Trade Action");
         smt_table->loglevel = FL_PROGRESS;
         smt_table->logflag = 0;
-        smt_0x90_decode(smt_table, msgb, msgl);
+        is_all_decode = 1;
+        is_market = 1;
+        fixedfld = {
+            {"Instrument Locate", FIXEDFLD_UINT, &INSTRUMENT_STATUS_INSTRUMENT_LOCATE_LEN, &smt_table->market_data.instrument_status.instrument_locate},
+            {"Market Center Locate", FIXEDFLD_UINT, &INSTRUMENT_STATUS_MARKET_CENTER_LOCATE_LEN, &smt_table->market_data.instrument_status.market_center_locate},
+            {"Status Type", FIXEDFLD_UINT, &INSTRUMENT_STATUS_STATUS_TYPE_LEN, &smt_table->market_data.instrument_status.status_type},
+            {"Status Code", FIXEDFLD_UINT, &INSTRUMENT_STATUS_STATUS_CODE_LEN, &smt_table->market_data.instrument_status.status_code},
+            {"Reason Code", FIXEDFLD_UINT, &INSTRUMENT_STATUS_REASON_CODE_LEN, &smt_table->market_data.instrument_status.reason_code},
+            {"Status Flags", FIXEDFLD_BITMASK, &INSTRUMENT_STATUS_STATUS_FLAGS_LEN, &smt_table->market_data.instrument_status.status_flag},
+            {"Reason Detail Length", FIXEDFLD_UINT, &INSTRUMENT_STATUS_REASON_DETAIL_LENGTH_LEN, &smt_table->market_data.instrument_status.reason_detail_length},
+            {"Reason Detail", FIXEDFLD_STRING, &smt_table->market_data.instrument_status.reason_detail_length, smt_table->market_data.instrument_status.reason_detail},
+            {NULL, 0, NULL, NULL}};
         break;
+    }
     case CHANNEL_EVENT_MSG_TYPE: // 0xB0
+    {
         strcpy(smt_table->name, "Channel Event");
         smt_table->loglevel = FL_PROGRESS;
         smt_table->logflag = 0;
-        smt_0xB0_decode(smt_table, msgb, msgl);
+        is_all_decode = 1;
+        is_market = 1;
+        fixedfld = {
+            {"Instrument Locate", FIXEDFLD_CHAR, &CHANNEL_EVENT_INSTRUMENT_LOCATE_LEN, smt_table->channel_event.instrument_locate},
+            {"Market Center Locate", FIXEDFLD_UINT, &CHANNEL_EVENT_MARKET_CENTER_LOCATE_LEN, &smt_table->channel_event.market_center_locate},
+            {NULL, 0, NULL, NULL}};
         break;
+    }
     case ADMIN_TEXT_MSG_TYPE: // 0xB2
         strcpy(smt_table->name, "Admin Text");
         smt_table->loglevel = FL_PROGRESS;
         smt_table->logflag = 0;
-        smt_0xB2_decode(smt_table, msgb, msgl);
+        is_all_decode = 1;
+        is_market = 1;
+        fixedfld = {
+            {"Text Length", FIXEDFLD_UINT, &ADMIN_TEXT_TEXT_LENGTH_LEN, &smt_table->administrative_text.text_length},
+            {"Text", FIXEDFLD_STRING, &smt_table->administrative_text.text_length, smt_table->administrative_text.text},
+            {NULL, 0, NULL, NULL}};
         break;
     case INSTRUMENT_META_DATA_MSG_TYPE: // 0xC0
         strcpy(smt_table->name, "Instrument Meta Data");
         smt_table->loglevel = FL_PROGRESS;
         smt_table->logflag = 0;
-        smt_0xC0_decode(smt_table, msgb, msgl);
+        is_all_decode = 1;
+        fixedfld = {
+            {"Message Type", FIXEDFLD_BITMASK, &INSTRUMENT_META_DATA_MSG_TYPE_LEN, &smt_table->reference.meta_data.msgtype},
+            {"Locate Code", FIXEDFLD_UINT, &INSTRUMENT_META_DATA_LOCATE_CODE_LEN, &smt_table->reference.meta_data.locate_code},
+            {"Parent Locate", FIXEDFLD_UINT, NULL, &smt_table->reference.meta_data.parent_locate_code},
+            {NULL, 0, NULL, NULL}};
         break;
     case OPTION_DELIVERY_COMPONENT_MSG_TYPE: // 0xC3
         strcpy(smt_table->name, "Option Delivery Component");
         smt_table->loglevel = FL_PROGRESS;
         smt_table->logflag = 0;
-        smt_0xC3_decode(smt_table, msgb, msgl);
+        is_all_decode = 1;
+        fixedfld = {
+            {"Message Type", FIXEDFLD_BITMASK, &OPTION_DELIVERY_COMPONENT_MSG_TYPE_LEN, &smt_table->reference.option_delivery.msgtype},
+            {"Root Code Locate", FIXEDFLD_UINT, &OPTION_DELIVERY_COMPONENT_ROOT_CODE_LOCATE_LEN, &smt_table->reference.option_delivery.root_code_locate},
+            {"Component Index", FIXEDFLD_UINT, &OPTION_DELIVERY_COMPONENT_COMPONENT_INDEX_LEN, &smt_table->reference.option_delivery.component_index},
+            {"Component Total", FIXEDFLD_UINT, &OPTION_DELIVERY_COMPONENT_COMPONENT_TOTAL_LEN, &smt_table->reference.option_delivery.component_total},
+            {"Deliverable Units", FIXEDFLD_UINT, &OPTION_DELIVERY_COMPONENT_DELIVERABLE_UNITS_LEN, &smt_table->reference.option_delivery.deliverable_units},
+            {"Settlement Method", FIXEDFLD_UINT, &OPTION_DELIVERY_COMPONENT_SETTLEMENT_METHOD_LEN, &smt_table->reference.option_delivery.settlement_method},
+            {"Fixed Amount Denominator", FIXEDFLD_UINT, &OPTION_DELIVERY_COMPONENT_FIXED_AMOUNT_DENOMINATOR_LEN, &smt_table->reference.option_delivery.fixed_amount_denominator},
+            {"Fixed Amount Numerator", FIXEDFLD_UINT, &OPTION_DELIVERY_COMPONENT_FIXED_AMOUNT_NUMERATOR_LEN, &smt_table->reference.option_delivery.fixed_amount_numerator},
+            {"Currecny Code", FIXEDFLD_STRING, &OPTION_DELIVERY_COMPONENT_CURRENCY_CODE_LEN, smt_table->reference.option_delivery.currency_code},
+            {"Strike Percent", FIXEDFLD_DECIMAL, &OPTION_DELIVERY_COMPONENT_STRIKE_PERCENT_LEN, &smt_table->reference.option_delivery.strike_percent},
+            {"Component Symbol Locate", FIXEDFLD_UINT, &OPTION_DELIVERY_COMPONENT_COMPONENT_SYMBOL_LOCATE_LEN, &smt_table->reference.option_delivery.component_symbol_locate},
+            {NULL, 0, NULL, NULL}};
         break;
     default:
         sprintf(smt_table->logmsg, "Unknown Type(0x%02X)", (int)smt_table->type);
@@ -894,6 +788,9 @@ int smt_decode(SMARTOPTION_TABLE *smt_table, unsigned int msgtype, unsigned char
         smt_table->logflag = 0;
         return (0);
     }
+
+    if (is_all_decode)
+        smt_all_decode(smt_table, fixedfld, msgb, msgl, is_market);
 
     return (0);
 }
