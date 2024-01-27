@@ -35,7 +35,7 @@ typedef struct
 {
     char field_name[MAX_BUFFER_SIZE];
     int field_type;
-    int *field_length;
+    uint64_t *field_length;
     void *value;
 } FIXEDFLD;
 
@@ -73,7 +73,6 @@ typedef struct
 #define UDP_DWN_HDR_MSGCNT_LEN 2
 
 // 2. Message Block
-#define UDP_DWN_MSGBLK_MSGLEN_LEN 2
 typedef struct
 {
     size_t msgl;
@@ -98,11 +97,6 @@ typedef struct
 /***********************/
 // @ MAX_SIZE
 #define MAX_SYMB_LEN 256
-
-// 0. Appendage List
-#define APPEND_ELEMENT_LENGTH_LEN 1
-#define APPEND_FORMATCODE_LEN 1
-#define APPEND_VALUETYPECODE_LEN 1
 
 // Format Code
 #define SHORT_FORM_DECIMAL_FORMAT_CODE 1
@@ -148,24 +142,15 @@ typedef struct
 // 1. System Event
 #define SYSTEM_EVENT_MSG_TYPE 0x20
 
-#define SYSTEM_EVENT_MSG_TYPE_LEN 1
-#define SYSTEM_EVENT_TIMESTAMP_LEN 8
-#define SYSTEM_EVENT_EVENTCODE_LEN 4
-
 typedef struct
 {
     uint64_t msgtype;
     uint64_t timestamp;
-    char event_code[SYSTEM_EVENT_EVENTCODE_LEN + 1];
+    char event_code[4 + 1];
 } SystemEvent;
 
 // 2. Channel Seconds
 #define CHANNEL_SECONDS_MSG_TYPE 0x22
-
-#define CHANNEL_SECONDS_MSG_TYPE_LEN 1
-#define CHANNEL_SECONDS_PROTOCOL_ID_LEN 1
-#define CHANNEL_SECONDS_CHANNEL_INDEX_LEN 1
-#define CHANNEL_SECONDS_SECONDS_LEN 4
 
 typedef struct
 {
@@ -178,35 +163,23 @@ typedef struct
 // 3. Market Center Locate
 #define MARKET_CENTER_LOCATE_MSG_TYPE 0x30
 
-#define MARKET_CENTER_LOCATE_MSG_TYPE_LEN 1
-#define MARKET_CENTER_LOCATE_LOCATECODE_LEN 2
-#define MARKET_CENTER_LOCATE_MIC_LEN 4
-
 typedef struct
 {
     uint64_t msgtype;
     uint64_t locate_code;
-    char MIC[MARKET_CENTER_LOCATE_MIC_LEN + 1];
+    char MIC[4 + 1];
 } MarketCenterLocate;
 
 // 4. Instrument Locate
 #define INSTRUMENT_LOCATE_MSG_TYPE 0x33
 
-#define INSTRUMENT_LOCATE_MSG_TYPE_LEN 1
-#define INSTRUMENT_LOCATE_LOCATECODE_LEN 4
-#define INSTRUMENT_LOCATE_COUNTRYCODE_LEN 2
-#define INSTRUMENT_LOCATE_CURRENCYCODE_LEN 3
-#define INSTRUMENT_LOCATE_MIC_LEN 4
-#define INSTRUMENT_LOCATE_PRODUCTTYPE_LEN 1
-#define INSTRUMENT_LOCATE_SYMBOLLENGTH_LEN 1
-
 typedef struct
 {
     uint64_t msgtype;
     uint64_t locate_code;
-    char country_code[INSTRUMENT_LOCATE_CURRENCYCODE_LEN + 1];
-    char currency_code[INSTRUMENT_LOCATE_CURRENCYCODE_LEN + 1];
-    char MIC[INSTRUMENT_LOCATE_MIC_LEN + 1];
+    char country_code[3 + 1];
+    char currency_code[3 + 1];
+    char MIC[4 + 1];
     uint64_t product_type;
     uint64_t symbol_length;
     char symbol[MAX_SYMB_LEN];
@@ -237,13 +210,6 @@ typedef struct
     uint64_t flags;
     int nside;
 } NBBO;
-
-#define NBBO_INSTRUMENT_LOCATE_LEN 4
-#define NBBO_DEPTH_MARKET_CENTER_LEN 2
-#define NBBO_DEPTH_DENOMINATOR_LEN 1
-#define NBBO_FLAGS_LEN 1
-#define NBBO_SIDE_LEN 1
-#define NBBO_RFU_LEN 1
 
 // 5. Two Sided NBBO Update - Short Form
 #define SHORT_2_SIDED_NBBO_MSG_TYPE 0x60
@@ -286,15 +252,6 @@ typedef struct
 
 #define TRADE_TRADE_TYPE 'T'
 #define CANCEL_TRADE_TYPE 'C'
-#define TRADE_INSTRUMENT_LOCATE_LEN 4
-#define TRADE_MARKET_CENTER_LOCATE_LEN 2
-#define TRADE_TRADE_ID_LEN 4
-#define TRADE_PRICE_FLAGS_LEN 1
-#define TRADE_ELIGIBILITY_FLAGS_LEN 1
-#define TRADE_REPORT_FLAGS_LEN 2
-#define TRADE_CHANGE_FLAGS_LEN 1
-#define TRADE_CANCEL_FLAGS_LEN 1
-#define TRADE_DENOMINATOR_LEN 1
 
 // 11. Trade Short Form
 #define SHORT_TRADE_MSG_TYPE 0x70
@@ -310,9 +267,6 @@ typedef struct
 
 // 15. Instrument Value Update
 #define VALUE_UPDATE_MSG_TYPE 0x80
-#define VALUE_UPDATE_INSTRUMENT_LOCATE_LEN 4
-#define VALUE_UPDATE_MARKET_CENTER_LOCATE_LEN 2
-#define VALUE_UPDATE_VALUE_UPDATE_FLAGS_LEN 4
 
 typedef struct
 {
@@ -336,13 +290,6 @@ typedef struct
 
 // 16. Instrument Status
 #define INSTRUMENT_STATUS_MSG_TYPE 0x90
-#define INSTRUMENT_STATUS_INSTRUMENT_LOCATE_LEN 4
-#define INSTRUMENT_STATUS_MARKET_CENTER_LOCATE_LEN 2
-#define INSTRUMENT_STATUS_STATUS_TYPE_LEN 1
-#define INSTRUMENT_STATUS_STATUS_CODE_LEN 1
-#define INSTRUMENT_STATUS_REASON_CODE_LEN 1
-#define INSTRUMENT_STATUS_STATUS_FLAGS_LEN 1
-#define INSTRUMENT_STATUS_REASON_DETAIL_LENGTH_LEN 1
 
 typedef struct
 {
@@ -358,18 +305,15 @@ typedef struct
 
 // 17. Channel Event
 #define CHANNEL_EVENT_MSG_TYPE 0xB0
-#define CHANNEL_EVENT_INSTRUMENT_LOCATE_LEN 4
-#define CHANNEL_EVENT_MARKET_CENTER_LOCATE_LEN 2
 
 typedef struct
 {
-    char instrument_locate[CHANNEL_EVENT_INSTRUMENT_LOCATE_LEN + 1];
+    char instrument_locate[4 + 1];
     uint64_t market_center_locate;
 } CHANNEL_EVENT;
 
 // 18. Administrative Text
 #define ADMIN_TEXT_MSG_TYPE 0xB2
-#define ADMIN_TEXT_TEXT_LENGTH_LEN 2
 
 typedef struct
 {
@@ -378,14 +322,6 @@ typedef struct
 } ADMINISTRATIVE_TEXT;
 
 // **Market Data Standard Header
-#define MARKET_HEADER_MSG_TYPE_LEN 1
-#define MARKET_HEADER_PROTOCOLID_LEN 1
-#define MARKET_HEADER_CHANNEL_INDEX_LEN 1
-#define MARKET_HEADER_MESSAGE_FLAG_LEN 1
-#define MARKET_HEADER_UPSTREAM_SEQN_LEN 4
-#define MARKET_HEADER_UPSTREAM_NANOS_LEN 4
-#define MARKET_HEADER_TOTAL_LEN 12
-
 typedef struct
 {
     uint64_t msgtype;
@@ -409,8 +345,6 @@ typedef struct
 
 // 19. Instrument Meta Data
 #define INSTRUMENT_META_DATA_MSG_TYPE 0xC0
-#define INSTRUMENT_META_DATA_MSG_TYPE_LEN 1
-#define INSTRUMENT_META_DATA_LOCATE_CODE_LEN 4
 
 typedef struct
 {
@@ -423,17 +357,6 @@ typedef struct
 
 // 20. Option Delivery Component
 #define OPTION_DELIVERY_COMPONENT_MSG_TYPE 0xC3
-#define OPTION_DELIVERY_COMPONENT_MSG_TYPE_LEN 1
-#define OPTION_DELIVERY_COMPONENT_ROOT_CODE_LOCATE_LEN 4
-#define OPTION_DELIVERY_COMPONENT_COMPONENT_INDEX_LEN 4
-#define OPTION_DELIVERY_COMPONENT_COMPONENT_TOTAL_LEN 4
-#define OPTION_DELIVERY_COMPONENT_DELIVERABLE_UNITS_LEN 4
-#define OPTION_DELIVERY_COMPONENT_SETTLEMENT_METHOD_LEN 1
-#define OPTION_DELIVERY_COMPONENT_FIXED_AMOUNT_DENOMINATOR_LEN 1
-#define OPTION_DELIVERY_COMPONENT_FIXED_AMOUNT_NUMERATOR_LEN 8
-#define OPTION_DELIVERY_COMPONENT_CURRENCY_CODE_LEN 3
-#define OPTION_DELIVERY_COMPONENT_STRIKE_PERCENT_LEN 2
-#define OPTION_DELIVERY_COMPONENT_COMPONENT_SYMBOL_LOCATE_LEN 4
 
 typedef struct
 {
@@ -445,7 +368,7 @@ typedef struct
     uint64_t settlement_method;
     uint64_t fixed_amount_denominator;
     uint64_t fixed_amount_numerator;
-    char currency_code[OPTION_DELIVERY_COMPONENT_CURRENCY_CODE_LEN + 1];
+    char currency_code[3 + 1];
     DECIMAL strike_percent;
     uint64_t component_symbol_locate;
 } OPTION_DELIVERY;
@@ -486,7 +409,7 @@ void convert_big_endian_to_int64_t(char *from, int64_t *to, size_t size);
 void convert_nanosec_to_time_t(uint64_t *from, time_t *to);
 
 // Message Buffer
-int read_msg_buff(MSGBUFF *msgbuff, FIXEDFLD *fixedfld, size_t size);
+int read_msg_buff(MSGBUFF *msgbuff, FIXEDFLD *fixedfld);
 int finish_msg_buff(MSGBUFF *msgbuff);
 int restore_msg_buff(MSGBUFF *msgbuff, size_t size);
 void initialize_msg_buff(MSGBUFF *msgbuff);

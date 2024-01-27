@@ -26,6 +26,7 @@ int main(int argc, char **argv)
     strcpy(exchange_name, argv[1]);
 
     fep = fep_open(exchange_name, MD_RDWR | MD_CREAT);
+ 
     if (fep == NULL)
     {
         if (isatty(1))
@@ -48,21 +49,17 @@ static int nasrcv(FEP *fep, void *argv)
     TOKEN *token = argv;
     TR_PACKET *tr_packet;
     SMARTOPTION_TABLE smt_table;
-    int retv;
     int rc = 0;
 
     tr_packet = (TR_PACKET *)token->rcvb;
- 
-    /* Smart Option Message Decoding */
-    retv = smt_decode(&smt_table, tr_packet->header.type, tr_packet->pkt_buff, tr_packet->pkt_l);
 
-    if (retv < 0)
-        return (0);
+    /* Smart Option Message Decoding */
+    smt_decode(&smt_table, tr_packet->header.type, tr_packet->pkt_buff, tr_packet->pkt_l);
 
     /* Logging data */
-    nas_raw_log(fep, smt_table.loglevel, 0, (char *)tr_packet->pkt_buff, tr_packet->pkt_l, "[%d-Type=%s(0x%02X) SEQ:%u LEN:%d]", token->port, smt_table.name, smt_table.type, tr_packet->header.seqn, tr_packet->pkt_l);
+   // nas_raw_log(fep, smt_table.loglevel, 0, tr_packet->pkt_buff, tr_packet->pkt_l, "[%d-Type=%s(0x%02X) SEQ:%u LEN:%d]", token->port, smt_table.name, smt_table.type, tr_packet->header.seqn, tr_packet->pkt_l);
     
-    fep_raw_log(fep, smt_table.loglevel, 0, "[%d-Type=%s(0x%02X) SEQ:%u] [%s] ", token->port, smt_table.name, smt_table.type, tr_packet->header.seqn, smt_table.logmsg);
+    nas_raw_csv(fep, smt_table.loglevel, smt_table.type, smt_table.loghead, smt_table.logmsg);
 
     return (rc);
 }

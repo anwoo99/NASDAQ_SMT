@@ -12,7 +12,6 @@
 void convert_big_endian_to_int64_t(char *from, int64_t *to, size_t size)
 {
     int ii;
-    int is_signed = (from[0] & 0x80); // 0X80 = '1000 0000'
 
     *to = 0;
     for (ii = 0; ii < size; ii++)
@@ -24,7 +23,7 @@ void convert_big_endian_to_int64_t(char *from, int64_t *to, size_t size)
      * INT64_C(value): define a constant of type int64_t
      * INT64_C(-1) == 0xFFFFFFFFFFFFFFFF(총 64비트 = 8바이트)
      */
-    if (is_signed)
+    if (from[0] & 0x80)
     {
         // Handle sign extension(부호 확장)
         *to |= (INT64_C(-1) << (8 * size));
@@ -99,6 +98,8 @@ int msg2fixedfld(FIXEDFLD *fixedfld, char *msgb, int offset)
     case FIXEDFLD_CHAR:
         *((char *)(fixedfld->value)) = msgb[offset];
         break;
+    default:
+        break;
     }
 
     return (0);
@@ -107,18 +108,16 @@ int msg2fixedfld(FIXEDFLD *fixedfld, char *msgb, int offset)
 /***************************/
 /* Message Buffer Function */
 /***************************/
-int read_msg_buff(MSGBUFF *msgbuff, FIXEDFLD *fixedfld, size_t size)
+int read_msg_buff(MSGBUFF *msgbuff, FIXEDFLD *fixedfld)
 {
-    if (msgbuff->rest_size < size)
+    if (msgbuff->rest_size < *fixedfld->field_length)
         return MSG_BUFFER_SCARCED;
-
-    *(fixedfld->field_length) = size;
 
     msg2fixedfld(fixedfld, msgbuff->buffer, msgbuff->offset);
 
-    msgbuff->rest_size -= size;
-    msgbuff->offset += size;
-    msgbuff->msgl = size;
+    msgbuff->rest_size -= *fixedfld->field_length;
+    msgbuff->offset += *fixedfld->field_length;
+    msgbuff->msgl = *fixedfld->field_length;
     return 0;
 }
 
@@ -138,7 +137,7 @@ int restore_msg_buff(MSGBUFF *msgbuff, size_t size)
 
     msgbuff->rest_size += size;
     msgbuff->offset -= size;
-    finish_read_msg_buff(msgbuff);
+    finish_msg_buff(msgbuff);
     return 0;
 }
 
@@ -156,7 +155,7 @@ void initialize_msg_buff(MSGBUFF *msgbuff)
 /**********************/
 int allocate_tr_packet(TR_PACKET *tr_packet, char *message_data, size_t message_length)
 {
-    tr_packet->header.type = message_data[0];
+    tr_packet->header.type = (unsigned char)message_data[0];
     memcpy(tr_packet->pkt_buff, message_data, message_length);
     tr_packet->pkt_l = message_length;
     tr_packet->header.seqn += 1;
@@ -195,13 +194,13 @@ void nas_raw_log(FEP *fep, int level, int flag, char *msgb, int msgl, const char
     switch (flag)
     {
     case 1:
-        snprintf(logpath, sizeof(logpath), "%s/%s_RAW_MASTER-%d.log", LOG_DIR, fep->exnm, tm.tm_wday);
+        snprintf(logpath, sizeof(logpath), "%s/Nasdaq/%s_RAW_MASTER-%d.log", LOG_DIR, fep->exnm, tm.tm_wday);
         break;
     case 2:
-        snprintf(logpath, sizeof(logpath), "%s/%s_RAW_TRADE-%d.log", LOG_DIR, fep->exnm, tm.tm_wday);
+        snprintf(logpath, sizeof(logpath), "%s/Nasdaq/%s_RAW_TRADE-%d.log", LOG_DIR, fep->exnm, tm.tm_wday);
         break;
     default:
-        snprintf(logpath, sizeof(logpath), "%s/%s_RAW-%d.log", LOG_DIR, fep->exnm, tm.tm_wday);
+        snprintf(logpath, sizeof(logpath), "%s/Nasdaq/%s_RAW-%d.log", LOG_DIR, fep->exnm, tm.tm_wday);
         break;
     }
 
@@ -254,7 +253,7 @@ void nas_raw_csv(FEP *fep, int level, int type, char *header, char *message)
     clock += fep->e2lt;
     localtime_r(&clock, &tm);
 
-    snprintf(logpath, sizeof(logpath), "%s/%s_0x%02X-%d.csv", LOG_DIR, fep->exnm, type, tm.tm_wday);
+    snprintf(logpath, sizeof(logpath), "%s/Nasdaq/%s_0x%02X-%d.csv", LOG_DIR, fep->exnm, type, tm.tm_wday);
 
     snprintf(mode, sizeof(mode), "a");
 
@@ -269,13 +268,15 @@ void nas_raw_csv(FEP *fep, int level, int type, char *header, char *message)
         }
     }
 
-    snprintf(logheader, sizeof(logheader), "Datetime,%s", header);
-    snprintf(logmsg, sizeof(logmsg), "%02d/%02d %02d:%02d:%02d,%s", tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, message);
+    sprintf(logheader, "Date,Time,%s", header);
+    sprintf(logmsg, "%02d/%02d,%02d:%02d:%02d,%s", tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, message);
 
     if ((logF = fopen(logpath, mode)) != NULL)
-    {
-        if (lstat.st_size == 0)
-            fprintf(log, "%s\n", logheader);
+    { 
+	fseek(logF, 0, SEEK_END);
+
+        if (ftell(logF) == 0)
+            fprintf(logF, "%s\n", logheader);
 
         fprintf(logF, "%s\n", logmsg);
         fclose(logF);

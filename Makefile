@@ -8,7 +8,7 @@ AFLAGS=$(MY_AFLAGS)
 AROPTS=$(MY_AROPTS)
 LIBOBJ=libNASOBJ.o
 
-INCINC=../inc/context.h ../inc/fep.h ../inc/schema.h ../inc/stream.h ../inc/config.h
+INCINC=../inc/context.h ../inc/fep.h ../inc/schema.h ../inc/stream.h ../inc/config.h ./nastag.h
 CMD=nasrecv nasfep
 
 # Default Rules:
@@ -35,6 +35,8 @@ nasrecv:nasrecv.o $(LIBOBJ)
 nasfep:nasfep.o	$(LIBOBJ)
 	$(CC) -o nasfep nasfep.o $(LIBOBJ) $(LFLAGS)
 
+nasfep.o: nasfep.c $(INCINC)
+nasrecv.o: nasrecv.c $(INCINC)
 $(LIBOBJ):	$(LIBOBJ)(smartoption.o)	$(LIBOBJ)(nastool.o)	\
 		$(LIBOBJ)(moldudp64.o)
 		if [ -s /usr/bin/ranlib ]; then ranlib $(LIBOBJ); fi

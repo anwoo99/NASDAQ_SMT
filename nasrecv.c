@@ -19,7 +19,7 @@ struct sockaddr_un target_addr;
 char *domain_filename;
 
 char *NASDAQ_EMI_FILENAME = "/dat/feplog/Nasdaq/07272020_000008938M.smrtopt.ch5";
-//char *NASDAQ_EMI_FILENAME = "/dat/feplog/Nasdaq/test.txt";
+// char *NASDAQ_EMI_FILENAME = "/dat/feplog/Nasdaq/test.txt";
 
 void usage(const char *program_name)
 {
@@ -95,6 +95,9 @@ int start_analyze()
     TR_PACKET *tr_packet = (TR_PACKET *)send_b;
     SMARTOPTION_TABLE smart_option;
 
+    initialize_msg_buff(&msgbuff);
+    initialize_tr_packet(tr_packet);
+
     // Set up the domain socket
     if (socket_setting() < 0)
     {
@@ -127,13 +130,16 @@ int start_analyze()
             {
                 // Allocate TR_PACKET and send to domain socket
                 allocate_tr_packet(tr_packet, message_block.data, message_block.msgl);
+
                 if (sendto(domain_socket, send_b, TR_PACKET_LEN, 0, (struct sockaddr *)&target_addr, sizeof(target_addr)) < 0)
                 {
                     fep_log(fep, FL_ERROR, "sendto() to '%s' error(%d|%s)", domain_filename, errno, strerror(errno));
                     fep_sleep(3000000);
                     continue;
                 }
+		//fep_sleep(1000000);
             }
+	    
         }
 
         // Print reading progress percentage
