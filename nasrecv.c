@@ -137,9 +137,8 @@ int start_analyze()
                     fep_sleep(3000000);
                     continue;
                 }
-		//fep_sleep(1000000);
+                // fep_sleep(1000000);
             }
-	    
         }
 
         // Print reading progress percentage

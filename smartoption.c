@@ -546,7 +546,7 @@ int smt_decode(SMARTOPTION_TABLE *smt_table, unsigned int msgtype, char *msgb, s
             {"Timestamp", FIXEDFLD_UINT, &SYSTEM_EVENT_TIMESTAMP_LEN, (void *)&smt_table->system_event.timestamp},
             {"Event Code", FIXEDFLD_STRING, &SYSTEM_EVENT_EVENTCODE_LEN, (void *)&smt_table->system_event.event_code},
             {NULL, 0, NULL, NULL}};
-        smt_all_decode(smt_table, fixedfld, msgb, msgl, is_market);	
+        smt_all_decode(smt_table, fixedfld, msgb, msgl, is_market);
         break;
     }
     case CHANNEL_SECONDS_MSG_TYPE: // 0x22
@@ -790,7 +790,7 @@ int smt_decode(SMARTOPTION_TABLE *smt_table, unsigned int msgtype, char *msgb, s
         break;
     }
     default:
-    { 
+    {
         sprintf(smt_table->logmsg, "Unknown Type(0x%02X)", smt_table->type);
         smt_table->loglevel = FL_PROGRESS;
         smt_table->logflag = 0;

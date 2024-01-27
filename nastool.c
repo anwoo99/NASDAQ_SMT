@@ -155,7 +155,7 @@ void initialize_msg_buff(MSGBUFF *msgbuff)
 /**********************/
 int allocate_tr_packet(TR_PACKET *tr_packet, char *message_data, size_t message_length)
 {
-    tr_packet->header.type = (unsigned char)message_data[0];
+    convert_big_endian_to_uint64_t(message_data, &tr_packet->header, 1);
     memcpy(tr_packet->pkt_buff, message_data, message_length);
     tr_packet->pkt_l = message_length;
     tr_packet->header.seqn += 1;
@@ -272,8 +272,8 @@ void nas_raw_csv(FEP *fep, int level, int type, char *header, char *message)
     sprintf(logmsg, "%02d/%02d,%02d:%02d:%02d,%s", tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, message);
 
     if ((logF = fopen(logpath, mode)) != NULL)
-    { 
-	fseek(logF, 0, SEEK_END);
+    {
+        fseek(logF, 0, SEEK_END);
 
         if (ftell(logF) == 0)
             fprintf(logF, "%s\n", logheader);
