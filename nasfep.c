@@ -58,13 +58,15 @@ static int nasrcv(FEP *fep, void *argv)
 
     tr_packet = (TR_PACKET *)token->rcvb;
 
+    tr2smart(&smt_table, tr_packet);
+
     /* Smart Option Message Decoding */
-    smt_decode(&smt_table, tr_packet->header.type, tr_packet->pkt_buff, tr_packet->pkt_l);
+    smt_decode(&smt_table);
 
     /* Logging data */
-    // nas_raw_log(fep, smt_table.loglevel, 0, tr_packet->pkt_buff, tr_packet->pkt_l, "[%d-Type=%s(0x%02X) SEQ:%u LEN:%d]", token->port, smt_table.name, smt_table.type, tr_packet->header.seqn, tr_packet->pkt_l);
+    nas_smt_log(fep, &smt_table, "[%d-Type=%s(0x%02X) SEQ:%u LEN:%d]", token->port, smt_table.name, smt_table.type, tr_packet->header.seqn, tr_packet->pkt_l);
 
-    nas_raw_csv(fep, smt_table.loglevel, smt_table.type, smt_table.loghead, smt_table.logmsg);
+    nas_smt_csv(fep, &smt_table);
 
     return (rc);
 }

@@ -3,12 +3,12 @@ include ../environments
 LIB=$(LIB_DIR)
 INC=$(INC_DIR)
 CFLAGS= -g -O -I./ -I../inc $(FEP_CFLAGS) 
-LFLAGS=$(FEP_LFLAGS) -L../lib/fep -lFEP -lm
+LFLAGS=$(FEP_LFLAGS) -L../lib/fep -lFEP -lm -w
 AFLAGS=$(MY_AFLAGS)
 AROPTS=$(MY_AROPTS)
 LIBOBJ=libNASOBJ.o
 
-INCINC=../inc/context.h ../inc/fep.h ../inc/schema.h ../inc/stream.h ../inc/config.h ./nastag.h
+INCINC=../inc/context.h ../inc/fep.h ../inc/schema.h ../inc/stream.h ../inc/config.h
 CMD=nasrecv nasfep
 
 # Default Rules:

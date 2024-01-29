@@ -210,7 +210,7 @@ void initialize_msg_buff(MSGBUFF *msgbuff)
  */
 int allocate_tr_packet(TR_PACKET *tr_packet, char *message_data, size_t message_length)
 {
-    convert_big_endian_to_uint64_t(message_data, &tr_packet->header, 1);
+    convert_big_endian_to_uint64_t(message_data, &tr_packet->header.type, 1);
     memcpy(tr_packet->pkt_buff, message_data, message_length);
     tr_packet->pkt_l = message_length;
     tr_packet->header.seqn += 1;
@@ -230,16 +230,25 @@ void initialize_tr_packet(TR_PACKET *tr_packet)
     tr_packet->header.type = 0;
 }
 
+void tr2smart(SMARTOPTION_TABLE *smt_table, TR_PACKET *tr_packet)
+{
+    memset(smt_table, 0x00, sizeof(SMARTOPTION_TABLE));
+
+    smt_table->type = tr_packet->header.type;
+    smt_table->raw_data_l = tr_packet->pkt_l;
+    memcpy(smt_table->raw_data, tr_packet->pkt_buff, tr_packet->pkt_l);
+}
+
 /**********/
 /* Logger */
 /**********/
 
 /*
- * Function: nas_raw_log()
+ * Function: nas_smt_log()
  * -------------------------------------
  * Raw Data STRING 로그
  */
-void nas_raw_log(FEP *fep, int level, int flag, char *msgb, int msgl, const char *format, ...)
+void nas_smt_log(FEP *fep, SMARTOPTION_TABLE *smt_table, const char *format, ...)
 {
     FILE *logF;
     time_t clock;
@@ -248,7 +257,7 @@ void nas_raw_log(FEP *fep, int level, int flag, char *msgb, int msgl, const char
     char logmsg[1024 * 8], logpath[128], mode[8];
     va_list vl;
 
-    if (level > fep->llog)
+    if (smt_table->loglevel > fep->llog)
     {
         return;
     }
@@ -257,17 +266,19 @@ void nas_raw_log(FEP *fep, int level, int flag, char *msgb, int msgl, const char
     clock += fep->e2lt;
     localtime_r(&clock, &tm);
 
-    switch (flag)
+    switch (smt_table->class)
     {
-    case 1:
-        snprintf(logpath, sizeof(logpath), "%s/Nasdaq/%s_RAW_MASTER-%d.log", LOG_DIR, fep->exnm, tm.tm_wday);
+    case SMT_NBBO_CLASS:
+        snprintf(logpath, sizeof(logpath), "%s/Nasdaq/%s_NBBO-%d.log", LOG_DIR, fep->exnm, tm.tm_wday);
         break;
-    case 2:
-        snprintf(logpath, sizeof(logpath), "%s/Nasdaq/%s_RAW_TRADE-%d.log", LOG_DIR, fep->exnm, tm.tm_wday);
+    case SMT_TRADE_CLASS:
+        snprintf(logpath, sizeof(logpath), "%s/Nasdaq/%s_TRADE-%d.log", LOG_DIR, fep->exnm, tm.tm_wday);
+        break;
+    case SMT_DEFAULT_CLASS:
+        snprintf(logpath, sizeof(logpath), "%s/Nasdaq/%s_0x%02X-%d.log", LOG_DIR, fep->exnm, (unsigned int)smt_table->type, tm.tm_wday);
         break;
     default:
-        snprintf(logpath, sizeof(logpath), "%s/Nasdaq/%s_RAW-%d.log", LOG_DIR, fep->exnm, tm.tm_wday);
-        break;
+        return;
     }
 
     snprintf(mode, sizeof(mode), "a");
@@ -294,7 +305,7 @@ void nas_raw_log(FEP *fep, int level, int flag, char *msgb, int msgl, const char
         fprintf(logF, "%s", logmsg);
 
         fputc('[', logF);
-        fwrite(msgb, 1, msgl, logF);
+        fwrite(smt_table->raw_data, 1, smt_table->raw_data_l, logF);
         fputc(']', logF);
         fputc('\n', logF);
 
@@ -303,11 +314,11 @@ void nas_raw_log(FEP *fep, int level, int flag, char *msgb, int msgl, const char
 }
 
 /*
- * Function: nas_raw_csv()
+ * Function: nas_smt_csv()
  * -------------------------------------
  * Raw Data CSV 로그
  */
-void nas_raw_csv(FEP *fep, int level, int type, char *header, char *message)
+void nas_smt_csv(FEP *fep, SMARTOPTION_TABLE *smt_table)
 {
     FILE *logF;
     time_t clock;
@@ -315,7 +326,7 @@ void nas_raw_csv(FEP *fep, int level, int type, char *header, char *message)
     struct stat lstat;
     char logmsg[1024 * 8], logheader[1024 * 8], logpath[128], mode[8];
 
-    if (level > fep->llog)
+    if (smt_table->loglevel > fep->llog)
     {
         return;
     }
@@ -324,7 +335,20 @@ void nas_raw_csv(FEP *fep, int level, int type, char *header, char *message)
     clock += fep->e2lt;
     localtime_r(&clock, &tm);
 
-    snprintf(logpath, sizeof(logpath), "%s/Nasdaq/%s_0x%02X-%d.csv", LOG_DIR, fep->exnm, type, tm.tm_wday);
+    switch (smt_table->class)
+    {
+    case SMT_NBBO_CLASS:
+        snprintf(logpath, sizeof(logpath), "%s/Nasdaq/%s_NBBO-%d.csv", LOG_DIR, fep->exnm, tm.tm_wday);
+        break;
+    case SMT_TRADE_CLASS:
+        snprintf(logpath, sizeof(logpath), "%s/Nasdaq/%s_TRADE-%d.csv", LOG_DIR, fep->exnm, tm.tm_wday);
+        break;
+    case SMT_DEFAULT_CLASS:
+        snprintf(logpath, sizeof(logpath), "%s/Nasdaq/%s_0x%02X-%d.csv", LOG_DIR, fep->exnm, (unsigned int)smt_table->type, tm.tm_wday);
+        break;
+    default:
+        return;
+    }
 
     snprintf(mode, sizeof(mode), "a");
 
@@ -339,8 +363,8 @@ void nas_raw_csv(FEP *fep, int level, int type, char *header, char *message)
         }
     }
 
-    sprintf(logheader, "Date,Time,%s", header);
-    sprintf(logmsg, "%02d/%02d,%02d:%02d:%02d,%s", tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, message);
+    sprintf(logheader, "Date,Time,%s", smt_table->loghead);
+    sprintf(logmsg, "%02d/%02d,%02d:%02d:%02d,%s", tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, smt_table->logmsg);
 
     if ((logF = fopen(logpath, mode)) != NULL)
     {

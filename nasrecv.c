@@ -92,7 +92,6 @@ int start_analyze()
     MSG_BLOCK message_block;
     char send_b[TR_PACKET_LEN];
     TR_PACKET *tr_packet = (TR_PACKET *)send_b;
-    SMARTOPTION_TABLE smart_option;
 
     initialize_msg_buff(&msgbuff);
     initialize_tr_packet(tr_packet);

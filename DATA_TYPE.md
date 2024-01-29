@@ -1,5 +1,9 @@
 # Smartoption 데이터 유형 규칙
+## 0. 주의사항
+__해당 정리 내용은 Nasdaq 거래소의 "Smar Option NBBO & Trades Product Specifications' 문서의 <u>Data Types</u> 항목을 참고하여 작성하였습니다.  
+오번역이 있을 수 있으므로 가급적 원문과 함께 보시기를 권고 드립니다.__
 
+## 1. Data Types 규칙
 1. **모든 고정 너비의 Alpha 필드**는 왼쪽 정렬되며, 우측의 빈 부분은 스페이스로 패딩됩니다.
 
 2. **모든 Numeric 필드**는 빅엔디안 이진 형식입니다.
