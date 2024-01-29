@@ -1,8 +1,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <getopt.h>
-#include "context.h"
-#include "nastag.h"
+#include "nassmt.h"
 
 int start_analyze();
 int start_receive();
@@ -62,10 +61,10 @@ int main(int argc, char **argv)
 /*
  * Function: start_analyze()
  * -------------------------
- * Reads a binary test file, parses MoldUDP64 message blocks, and sends TR_PACKETs to a domain socket.
+ * 바이너리 형식의 Test File을 읽고, MoldUDP64 메세지의 Block 요소들만 추출한 후, TR_PAKCET 구조체 형식의 데이터를 Unix Domain Socket을 사용하여 'nasfep'으로 전송
  *
  * Returns:
- *    0 on success, -1 on failure
+ *    0은 성공, -1은 실패
  */
 int start_analyze()
 {

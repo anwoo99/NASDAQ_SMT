@@ -1,4 +1,4 @@
-#include "nastag.h"
+#include "nassmt.h"
 
 static int nasrcv(FEP *fep, void *argv);
 
@@ -42,6 +42,11 @@ int main(int argc, char **argv)
     return (0);
 }
 
+/*
+ * Function: nasrcv()
+ * -------------------------------------
+ * nasrcv 송신 패킷 IPC 수신
+ */
 static int nasrcv(FEP *fep, void *argv)
 {
     MDARCH *arch = fep->arch;

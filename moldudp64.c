@@ -1,8 +1,16 @@
-#include "nastag.h"
+/*******************************************/
+/* Mold UDP64 Protocol Specification V1.00 */
+/*******************************************/
+
+#include "nassmt.h"
 
 uint64_t UDP_DWN_MSGBLK_MSGLEN_LEN = 2;
 
-/* Moldudp64 Downstream Packet Message Block Parser */
+/*
+ * Function: parser_moldudp64_message_block()
+ * ------------------------------------------
+ * 'Message Block' 파싱
+ */
 int parser_moldudp64_message_block(MSGBUFF *msgbuff, MSG_BLOCK *msgblock)
 {
     int retv = 0;

@@ -1,4 +1,4 @@
-#include "nastag.h"
+#include "nassmt.h"
 
 /********************/
 /* Convert Function */
@@ -105,9 +105,43 @@ int msg2fixedfld(FIXEDFLD *fixedfld, char *msgb, int offset)
     return (0);
 }
 
+/*
+ * Function: decode_fixedfld()
+ * -------------------------------------
+ * FIXEDFLD 개별 Decode
+ */
+void decode_fixedfld(FIXEDFLD *fixedfld, char *msgb, int *offset, int fldnum)
+{
+    msg2fixedfld(&fixedfld[fldnum], msgb, *offset);
+    *offset += *(fixedfld[fldnum].field_length);
+}
+
+/*
+ * Function: decode_fixedfld_all()
+ * -------------------------------------
+ * FIXEDFLD Array 전체 Decode
+ */
+void decode_fixedfld_all(FIXEDFLD *fixedfld, char *msgb, int *offset)
+{
+    int fldnum = 0;
+
+    // Iterate through fields and decode
+    while (fixedfld[fldnum].field_length != NULL)
+    {
+        decode_fixedfld(fixedfld, msgb, offset, fldnum);
+        fldnum++;
+    }
+}
+
 /***************************/
 /* Message Buffer Function */
 /***************************/
+
+/*
+ * Function: read_msg_buff()
+ * -------------------------------------
+ * Message 버퍼 Read
+ */
 int read_msg_buff(MSGBUFF *msgbuff, FIXEDFLD *fixedfld)
 {
     if (msgbuff->rest_size < *fixedfld->field_length)
@@ -121,6 +155,11 @@ int read_msg_buff(MSGBUFF *msgbuff, FIXEDFLD *fixedfld)
     return 0;
 }
 
+/*
+ * Function: finish_msg_buff()
+ * -------------------------------------
+ * Message 버퍼 Read 종료
+ */
 int finish_msg_buff(MSGBUFF *msgbuff)
 {
     memmove(msgbuff->buffer, &msgbuff->buffer[msgbuff->offset], msgbuff->rest_size);
@@ -130,6 +169,11 @@ int finish_msg_buff(MSGBUFF *msgbuff)
     return 0;
 }
 
+/*
+ * Function: restore_msg_buff()
+ * -------------------------------------
+ * Message 버퍼 Read 이전 상태 복구
+ */
 int restore_msg_buff(MSGBUFF *msgbuff, size_t size)
 {
     if (size > msgbuff->offset)
@@ -141,6 +185,11 @@ int restore_msg_buff(MSGBUFF *msgbuff, size_t size)
     return 0;
 }
 
+/*
+ * Function: initialize_msg_buff()
+ * -------------------------------------
+ * Message 버퍼 초기화
+ */
 void initialize_msg_buff(MSGBUFF *msgbuff)
 {
     memset(msgbuff->buffer, 0x00, sizeof(msgbuff->buffer));
@@ -153,6 +202,12 @@ void initialize_msg_buff(MSGBUFF *msgbuff)
 /**********************/
 /* TR Packet Function */
 /**********************/
+
+/*
+ * Function: allocate_tr_packet()
+ * -------------------------------------
+ * IPC용 TR_PACKET 할당
+ */
 int allocate_tr_packet(TR_PACKET *tr_packet, char *message_data, size_t message_length)
 {
     convert_big_endian_to_uint64_t(message_data, &tr_packet->header, 1);
@@ -163,6 +218,11 @@ int allocate_tr_packet(TR_PACKET *tr_packet, char *message_data, size_t message_
     return (0);
 }
 
+/*
+ * Function: initialize_tr_packet()
+ * -------------------------------------
+ * IPC용 TR_PACKET 초기화
+ */
 void initialize_tr_packet(TR_PACKET *tr_packet)
 {
     memset(tr_packet->pkt_buff, 0x00, sizeof(tr_packet->pkt_buff));
@@ -173,6 +233,12 @@ void initialize_tr_packet(TR_PACKET *tr_packet)
 /**********/
 /* Logger */
 /**********/
+
+/*
+ * Function: nas_raw_log()
+ * -------------------------------------
+ * Raw Data STRING 로그
+ */
 void nas_raw_log(FEP *fep, int level, int flag, char *msgb, int msgl, const char *format, ...)
 {
     FILE *logF;
@@ -236,6 +302,11 @@ void nas_raw_log(FEP *fep, int level, int flag, char *msgb, int msgl, const char
     }
 }
 
+/*
+ * Function: nas_raw_csv()
+ * -------------------------------------
+ * Raw Data CSV 로그
+ */
 void nas_raw_csv(FEP *fep, int level, int type, char *header, char *message)
 {
     FILE *logF;
