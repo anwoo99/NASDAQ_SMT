@@ -308,7 +308,7 @@ typedef struct
 
 typedef struct
 {
-    char instrument_locate[4 + 1];
+    char event_code[4 + 1];
     uint64_t market_center_locate;
 } CHANNEL_EVENT;
 

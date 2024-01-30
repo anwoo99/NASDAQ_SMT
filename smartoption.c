@@ -67,7 +67,7 @@ uint64_t INSTRUMENT_STATUS_STATUS_FLAGS_LEN = 1;
 uint64_t INSTRUMENT_STATUS_REASON_DETAIL_LENGTH_LEN = 1;
 
 // 9. Channel Event
-uint64_t CHANNEL_EVENT_INSTRUMENT_LOCATE_LEN = 4;
+uint64_t CHANNEL_EVENT_EVENT_CODE_LEN = 4;
 uint64_t CHANNEL_EVENT_MARKET_CENTER_LOCATE_LEN = 2;
 
 // 10. Administrative Text
@@ -859,7 +859,7 @@ int smt_decode(SMARTOPTION_TABLE *smt_table)
         smt_table->logflag = 0;
         is_market = 1;
         FIXEDFLD fixedfld[] = {
-            {"Instrument Locate", FIXEDFLD_CHAR, &CHANNEL_EVENT_INSTRUMENT_LOCATE_LEN, (void *)smt_table->market_data.channel_event.instrument_locate},
+            {"Event Code", FIXEDFLD_STRING, &CHANNEL_EVENT_EVENT_CODE_LEN, (void *)smt_table->market_data.channel_event.event_code},
             {"Market Center Locate", FIXEDFLD_UINT, &CHANNEL_EVENT_MARKET_CENTER_LOCATE_LEN, (void *)&smt_table->market_data.channel_event.market_center_locate},
             {"", 0, NULL, NULL}};
         smt_default_decode(smt_table, fixedfld, is_market);
