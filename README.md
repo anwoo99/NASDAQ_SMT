@@ -16,7 +16,7 @@
 
 ### 1.1. Data 수신 프로토콜
 - [MoldUDP64](./MOLDUDP64.md)
-- SoupBinTCP(당사는 사용하지 않음)
+- [SoupBinTCP](./SOUPBINTCP.md)
 
 
 ### 1.2. Data 포맷
@@ -30,3 +30,7 @@
 
 ### 2.2. 가공 프로세스(nasfep)
 #### 2.2.1. Command
+
+
+---
+© 2024 Corise Technology. 이 프로젝트는 MIT 라이센스에 따라 릴리스되었습니다. 자세한 정보는 [LICENSE](LICENSE) 파일을 참조하세요.
