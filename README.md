@@ -15,8 +15,8 @@
 ## 1. NASDAQ Smartoption Spec Sheet
 
 ### 1.1. Data 수신 프로토콜
-- [MoldUDP64](./)
-- [SoupBinTCP](./)
+- [MoldUDP64](./MOLDUDP64.md)
+- SoupBinTCP(당사는 사용하지 않음)
 
 
 ### 1.2. Data 포맷
