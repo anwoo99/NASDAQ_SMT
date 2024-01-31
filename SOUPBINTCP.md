@@ -64,7 +64,7 @@ graph TD
 ##### 1.1.2.1 Sequenced 데이터
 - 패킷 내에 Sequence 에 관한 정보가 없으므로 로컬에서 시퀀스 번호를 직접 세야한다.
 - 첫 수신 메세지는 무조건 시퀀스 1 부터 시작한다.
-- [Sequenced Data Packet 참고](#24-sequenced-data-packets)  
+- [Sequenced Data Packet 참고](#223-sequenced-data-packets)  
 
 ##### 1.1.2.2. Login Request Packet
 - 초기 로그인 시 클라이언트는 아래와 같이 Login Request Packet을 생성한다: 
@@ -73,8 +73,8 @@ graph TD
 |:--:|:--:|:--:|
 |1|Blank|
 
-___[Login Accepted Packet 참고](#22-login-accepted-packeta)___  
-___[Login Rejected Packet 참고](#23-login-rejected-packetj)___
+___[Login Accepted Packet 참고](#221-login-accepted-packeta)___  
+___[Login Rejected Packet 참고](#222-login-rejected-packetj)___
 
 ##### 1.1.2.3. 재로그인
 - TCP/IP 연결이 끊어진 경우, 클라이언트는 현재 세션과 Sequence Number를 토대로 서버로부터 재 로그인을 시도하여 데이터를 끊임 없이 받을 수 있다.
@@ -87,15 +87,15 @@ ___[Login Rejected Packet 참고](#23-login-rejected-packetj)___
 #### 1.1.3. Heartbeats
 ##### 1.1.3.1. 서버 측
 - Link 실패를 감지하고자 해당 패킷이 사용된다.
-- 서버가 마지막으로 데이터를 보낸 시점에서 1초가 경과되면 [Heartbeat](#25-server-heartbeat-packeth) 패킷을 발송한다.
-- 클라이언트측에서 만일 일정 시간이 경과되도록 [Heartbeat](#25-server-heartbeat-packeth)을 수신하지 못한다면, link가 끊어졌다는 의미이므로 재연결을 시도해야 한다.
+- 서버가 마지막으로 데이터를 보낸 시점에서 1초가 경과되면 [Server Heartbeat](#224-server-heartbeat-packeth) 패킷을 발송한다.
+- 클라이언트측에서 만일 일정 시간이 경과되도록 [Server Heartbeat](#224-server-heartbeat-packeth)을 수신하지 못한다면, link가 끊어졌다는 의미이므로 재연결을 시도해야 한다.
 
 ##### 1.1.3.2. 클라이언트 측
-- 클라이언트 측에서도 로그인 이후에는 적어도 1초에 한 번씩은 서버측으로 [Heartbeat](#25-server-heartbeat-packeth) 메세지를 보내주어야 한다.
+- 클라이언트 측에서도 로그인 이후에는 적어도 1초에 한 번씩은 서버측으로 [Client Heartbeat](#233-client-heartbeat-packetr) 메세지를 보내주어야 한다.
 - 서버측에서 만일 일정 시간이 경과되도록(약 15초)해당 메세지를 받지 못한다면, 소켓 연결을 끊는다. 
 
 #### 1.1.4. End of Session Marker
-- 서버측은 End of Session Message를 통해 현 세션이 종료되었음을 알린다.
+- 서버측은 [End of Session Message](#225-end-of-session-packetz)를 통해 현 세션이 종료되었음을 알린다.
 - 클라이언트측은 반드시 새로운 Session ID나 Session ID 필드를 공백처리 한 채로 재연결 및 재로그인을 시도해야한다.
 
 #### 1.1.5. Data Typs 
@@ -129,7 +129,7 @@ ___[Login Rejected Packet 참고](#23-login-rejected-packetj)___
 |Name|Offset|Len|Value|Note|
 |:--:|:--:|:--:|:--:|:--|
 |Packet Length|0|2|Integer|이 필드를 제외한 나머지 부분의 길이|
-|Packet Type|2|1|"A"|"J"(Login Rejected Packet)|
+|Packet Type|2|1|"J"|"J"(Login Rejected Packet)|
 |Reject Reason Code|3|1|Alpha|[Reject Code 참고](#231-reject-code)
 
 ##### 2.2.2.1. Reject Code
@@ -147,7 +147,7 @@ ___[Login Rejected Packet 참고](#23-login-rejected-packetj)___
 |Name|Offset|Len|Value|Note|
 |:--:|:--:|:--:|:--:|:--|
 |Packet Length|0|2|Integer|이 필드를 제외한 나머지 부분의 길이|
-|Packet Type|2|1|"A"|"S"(Sequenced Data Packet)|
+|Packet Type|2|1|"S"|"S"(Sequenced Data Packet)|
 |Message|3|Variable|Any|Defined by higher-level protocol|
 
 #### 2.2.4. Server Heartbeat Packet("H")
@@ -157,7 +157,7 @@ ___[Login Rejected Packet 참고](#23-login-rejected-packetj)___
 |Name|Offset|Len|Value|Note|
 |:--:|:--:|:--:|:--:|:--|
 |Packet Length|0|2|Integer|이 필드를 제외한 나머지 부분의 길이|
-|Packet Type|2|1|"A"|"H"(Server Heartbeat Packet)|
+|Packet Type|2|1|"H"|"H"(Server Heartbeat Packet)|
 
 #### 2.2.5. End of Session Packet("Z")
 - 서버는 현 세션 종료를 알리고자 End of Session Packet을 발송한다.
@@ -166,7 +166,7 @@ ___[Login Rejected Packet 참고](#23-login-rejected-packetj)___
 |Name|Offset|Len|Value|Note|
 |:--:|:--:|:--:|:--:|:--|
 |Packet Length|0|2|Integer|이 필드를 제외한 나머지 부분의 길이|
-|Packet Type|2|1|"A"|"Z"(End of Session Packet)|
+|Packet Type|2|1|"Z"|"Z"(End of Session Packet)|
 
 
 ### 2.3. 클라이언트 측에서 발송하는 패킷
@@ -179,7 +179,7 @@ ___[Login Rejected Packet 참고](#23-login-rejected-packetj)___
 |Name|Offset|Len|Value|Note|
 |:--:|:--:|:--:|:--:|:--|
 |Packet Length|0|2|Integer|이 필드를 제외한 나머지 부분의 길이|
-|Packet Type|2|1|"A"|"L"(Login Request Packet)|
+|Packet Type|2|1|"L"|"L"(Login Request Packet)|
 |Username|3|6|Alphanumeric|ID|
 |Password|9|10|Alphanumeric|Password|
 |Requested Session|19|10|Alphanumeric|로그인 할 Session 을 명시하거나, <br> blank처리하여 현재 Active한 세션으로 로그인|
@@ -193,7 +193,7 @@ ___[Login Rejected Packet 참고](#23-login-rejected-packetj)___
 |Name|Offset|Len|Value|Note|
 |:--:|:--:|:--:|:--:|:--|
 |Packet Length|0|2|Integer|이 필드를 제외한 나머지 부분의 길이|
-|Packet Type|2|1|"A"|"U"(Unsequenced Data Packet)|
+|Packet Type|2|1|"U"|"U"(Unsequenced Data Packet)|
 |Message|3|Variable|Any|Defined by higher-level protocol|
 
 #### 2.3.3. Client Heartbeat Packet("R")
@@ -203,7 +203,7 @@ ___[Login Rejected Packet 참고](#23-login-rejected-packetj)___
 |Name|Offset|Len|Value|Note|
 |:--:|:--:|:--:|:--:|:--|
 |Packet Length|0|2|Integer|이 필드를 제외한 나머지 부분의 길이|
-|Packet Type|2|1|"A"|"R"(Login Request Packet)| 
+|Packet Type|2|1|"R"|"R"(Login Request Packet)| 
 
 
 #### 2.3.4. Logout Request Packet("O")
@@ -213,7 +213,7 @@ ___[Login Rejected Packet 참고](#23-login-rejected-packetj)___
 |Name|Offset|Len|Value|Note|
 |:--:|:--:|:--:|:--:|:--|
 |Packet Length|0|2|Integer|이 필드를 제외한 나머지 부분의 길이|
-|Packet Type|2|1|"A"|"O"(Logout Request Packet)| 
+|Packet Type|2|1|"O"|"O"(Logout Request Packet)| 
 
 ---
 
