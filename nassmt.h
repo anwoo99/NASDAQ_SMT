@@ -380,7 +380,7 @@ typedef struct
     OPTION_DELIVERY option_delivery;
 } ReferenceData;
 
-#define MAX_LOG_MSG 1024 * 8
+#define MAX_LOG_MSG 1024 * 16
 #define SMT_NBBO_CLASS 0x01
 #define SMT_TRADE_CLASS 0x02
 #define SMT_DEFAULT_CLASS 0x04
@@ -428,6 +428,7 @@ void initialize_msg_buff(MSGBUFF *msgbuff);
 // TR Packet
 int allocate_tr_packet(TR_PACKET *tr_packet, char *message_data, size_t message_length);
 void initialize_tr_packet(TR_PACKET *tr_packet);
+void tr2smart(SMARTOPTION_TABLE *smt_table, TR_PACKET *tr_packet);
 
 // msgb -> fixedfld
 int msg2fixedfld(FIXEDFLD *fixedfld, char *msgb, int offset);

@@ -108,11 +108,13 @@ int _smt_csv(SMARTOPTION_TABLE *smt_table, FIXEDFLD *fixedfld)
 {
     int ii = 0;
     int head_l, msg_l;
+    int offset = 0;
 
     for (ii = 0; strlen(fixedfld[ii].field_name) > 0; ii++)
     {
         head_l = strlen(smt_table->loghead);
-        sprintf(&smt_table->loghead[head_l], "%s,", fixedfld[ii].field_name);
+
+        sprintf(&smt_table->loghead[head_l], "%s,", fixedfld[ii].field_name, fixedfld[ii].field_name);
 
         msg_l = strlen(smt_table->logmsg);
 
@@ -644,7 +646,6 @@ int smt_default_decode(SMARTOPTION_TABLE *smt_table, FIXEDFLD *fixedfld, int is_
 
     // Log Message(CSV)
     _smt_csv(smt_table, fixedfld);
-
     return 0;
 }
 

@@ -243,6 +243,25 @@ void tr2smart(SMARTOPTION_TABLE *smt_table, TR_PACKET *tr_packet)
 /* Logger */
 /**********/
 
+// Function to create a directory if it doesn't exist
+int createDirectory(char *path)
+{
+    struct stat st;
+
+    // Check if the directory already exists
+    if (stat(path, &st) == 0)
+    {
+        return 0;
+    }
+
+    // Try to create the directory
+    if (mkdir(path, 0777) != 0)
+    {
+        return -1;
+    }
+    return 0;
+}
+
 /*
  * Function: nas_smt_log()
  * -------------------------------------
@@ -254,7 +273,7 @@ void nas_smt_log(FEP *fep, SMARTOPTION_TABLE *smt_table, const char *format, ...
     time_t clock;
     struct tm tm, tx;
     struct stat lstat;
-    char logmsg[1024 * 8], logpath[128], mode[8];
+    char logdir[1024], logmsg[1024 * 8], logpath[128], mode[8];
     va_list vl;
 
     if (smt_table->loglevel > fep->llog)
@@ -266,16 +285,23 @@ void nas_smt_log(FEP *fep, SMARTOPTION_TABLE *smt_table, const char *format, ...
     clock += fep->e2lt;
     localtime_r(&clock, &tm);
 
+    sprintf(logdir, "%s/Nasdaq", LOG_DIR);
+
+    if (createDirectory(logdir) != 0)
+    {
+        return;
+    }
+
     switch (smt_table->class)
     {
     case SMT_NBBO_CLASS:
-        snprintf(logpath, sizeof(logpath), "%s/Nasdaq/%s_NBBO-%d.log", LOG_DIR, fep->exnm, tm.tm_wday);
+        snprintf(logpath, sizeof(logpath), "%s/%s_NBBO-%d.log", logdir, fep->exnm, tm.tm_wday);
         break;
     case SMT_TRADE_CLASS:
-        snprintf(logpath, sizeof(logpath), "%s/Nasdaq/%s_TRADE-%d.log", LOG_DIR, fep->exnm, tm.tm_wday);
+        snprintf(logpath, sizeof(logpath), "%s/%s_TRADE-%d.log", logdir, fep->exnm, tm.tm_wday);
         break;
     case SMT_DEFAULT_CLASS:
-        snprintf(logpath, sizeof(logpath), "%s/Nasdaq/%s_0x%02X-%d.log", LOG_DIR, fep->exnm, (unsigned int)smt_table->type, tm.tm_wday);
+        snprintf(logpath, sizeof(logpath), "%s/%s_0x%02X-%d.log", logdir, fep->exnm, (unsigned int)smt_table->type, tm.tm_wday);
         break;
     default:
         return;
@@ -303,7 +329,6 @@ void nas_smt_log(FEP *fep, SMARTOPTION_TABLE *smt_table, const char *format, ...
     if ((logF = fopen(logpath, mode)) != NULL)
     {
         fprintf(logF, "%s", logmsg);
-
         fputc('[', logF);
         fwrite(smt_table->raw_data, 1, smt_table->raw_data_l, logF);
         fputc(']', logF);
@@ -324,7 +349,7 @@ void nas_smt_csv(FEP *fep, SMARTOPTION_TABLE *smt_table)
     time_t clock;
     struct tm tm, tx;
     struct stat lstat;
-    char logmsg[1024 * 8], logheader[1024 * 8], logpath[128], mode[8];
+    char logdir[1024], logmsg[1024 * 8], logheader[1024 * 8], logpath[128], mode[8];
 
     if (smt_table->loglevel > fep->llog)
     {
@@ -335,22 +360,29 @@ void nas_smt_csv(FEP *fep, SMARTOPTION_TABLE *smt_table)
     clock += fep->e2lt;
     localtime_r(&clock, &tm);
 
+    sprintf(logdir, "%s/Nasdaq", LOG_DIR);
+
+    if (createDirectory(logdir) != 0)
+    {
+        return;
+    }
+
     switch (smt_table->class)
     {
     case SMT_NBBO_CLASS:
-        snprintf(logpath, sizeof(logpath), "%s/Nasdaq/%s_NBBO-%d.csv", LOG_DIR, fep->exnm, tm.tm_wday);
+        snprintf(logpath, sizeof(logpath), "%s/%s_NBBO-%d.csv", logdir, fep->exnm, tm.tm_wday);
         break;
     case SMT_TRADE_CLASS:
-        snprintf(logpath, sizeof(logpath), "%s/Nasdaq/%s_TRADE-%d.csv", LOG_DIR, fep->exnm, tm.tm_wday);
+        snprintf(logpath, sizeof(logpath), "%s/%s_TRADE-%d.csv", logdir, fep->exnm, tm.tm_wday);
         break;
     case SMT_DEFAULT_CLASS:
-        snprintf(logpath, sizeof(logpath), "%s/Nasdaq/%s_0x%02X-%d.csv", LOG_DIR, fep->exnm, (unsigned int)smt_table->type, tm.tm_wday);
+        snprintf(logpath, sizeof(logpath), "%s/%s_0x%02X-%d.csv", logdir, fep->exnm, (unsigned int)smt_table->type, tm.tm_wday);
         break;
     default:
         return;
     }
 
-    snprintf(mode, sizeof(mode), "a");
+    snprintf(mode, sizeof(mode), "ab");
 
     if (stat(logpath, &lstat) == 0)
     {
@@ -359,12 +391,12 @@ void nas_smt_csv(FEP *fep, SMARTOPTION_TABLE *smt_table)
 
         if (tx.tm_yday != tm.tm_yday)
         {
-            strcpy(mode, "w");
+            strcpy(mode, "wb");
         }
     }
 
-    sprintf(logheader, "Date,Time,%s", smt_table->loghead);
-    sprintf(logmsg, "%02d/%02d,%02d:%02d:%02d,%s", tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, smt_table->logmsg);
+    sprintf(logheader, "Date,Time,%s,Raw Data,", smt_table->loghead);
+    sprintf(logmsg, "%02d/%02d,%02d:%02d:%02d,%s,", tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, smt_table->logmsg);
 
     if ((logF = fopen(logpath, mode)) != NULL)
     {
@@ -373,7 +405,9 @@ void nas_smt_csv(FEP *fep, SMARTOPTION_TABLE *smt_table)
         if (ftell(logF) == 0)
             fprintf(logF, "%s\n", logheader);
 
-        fprintf(logF, "%s\n", logmsg);
+        fprintf(logF, "%s", logmsg);
+        fwrite(smt_table->raw_data, 1, smt_table->raw_data_l, logF);
+        fputc('\n', logF);
         fclose(logF);
     }
 }
