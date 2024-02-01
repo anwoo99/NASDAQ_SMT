@@ -380,7 +380,7 @@ int smt_appendage_decode(SMARTOPTION_TABLE *smt_table, int *offset)
 int smt_market_header_decode(SMARTOPTION_TABLE *smt_table)
 {
     MarketDataHeader *header = &smt_table->market_data.header;
-    int offset = MARKET_HEADER_MSG_TYPE_LEN;
+    int offset = 0;
     FIXEDFLD fixedfld[] = {
         {"Message Type", FIXEDFLD_BITMASK, &MARKET_HEADER_MSG_TYPE_LEN, (void *)&header->msgtype},
         {"Protocol ID", FIXEDFLD_UINT, &MARKET_HEADER_PROTOCOLID_LEN, (void *)&header->protocol_id},
