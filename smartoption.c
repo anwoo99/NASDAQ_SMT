@@ -721,6 +721,7 @@ int smt_decode(SMARTOPTION_TABLE *smt_table)
             {"Parent Locate Code", FIXEDFLD_UINT, NULL, (void *)&smt_table->instrument_locate.parent_locate_code},
             {"", 0, NULL, NULL}};
         smt_default_decode(smt_table, fixedfld, is_market);
+        smt_table->proc = nas_0x33;
         break;
     }
     case SHORT_2_SIDED_NBBO_MSG_TYPE: // 0x60

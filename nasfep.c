@@ -34,6 +34,8 @@ int main(int argc, char **argv)
         return (-1);
     }
 
+    memset(fep->bit, 0x00, )
+
     arch = fep->arch;
     arch->intv = fep->xchg->intv;
 
@@ -67,6 +69,8 @@ static int nasrcv(FEP *fep, void *argv)
     //nas_smt_log(fep, &smt_table, "[%d-Type=%s(0x%02X) SEQ:%u LEN:%d]", token->port, smt_table.name, smt_table.type, tr_packet->header.seqn, tr_packet->pkt_l);
 
     nas_smt_csv(fep, &smt_table);
+    
+    rc = (*smt_table.proc)(fep, token, &smt_table);
 
     return (rc);
 }

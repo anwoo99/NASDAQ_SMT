@@ -173,6 +173,15 @@ typedef struct
 // 4. Instrument Locate
 #define INSTRUMENT_LOCATE_MSG_TYPE 0x33
 
+#define UNKNOWN_PRODUCT 0
+#define EQUITY_PRODUCT 1
+#define OPTION_PRODUCT 2
+#define INDEX_PRODUCT 3
+#define WORLD_CURRENCY_PRODUCT 10
+#define FIXED_INCOME_PRODUCT 12
+#define FUTURES_CONTRACT_PRODUCT 14
+#define OPTION_ROOT_PRODUCT 23 
+
 typedef struct
 {
     uint64_t msgtype;
@@ -390,7 +399,7 @@ typedef struct
     char name[256];
     int loglevel;
     int logflag;
-    int (*proc)(FEP *, TOKEN *, FIXFLD *, int, int);
+    int (*proc)(FEP *, TOKEN *, SMARTOPTION_TABLE *);
     uint64_t type;
     int class;
     char loghead[MAX_LOG_MSG];
