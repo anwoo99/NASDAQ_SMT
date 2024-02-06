@@ -16,7 +16,7 @@ void convert_big_endian_to_int64_t(char *from, int64_t *to, size_t size)
     *to = 0;
     for (ii = 0; ii < size; ii++)
     {
-        *to = (*to << 8) | from[ii];
+        *to = (*to << 8) | (unsigned char)from[ii];
     }
 
     /*
@@ -236,7 +236,7 @@ void tr2smart(SMARTOPTION_TABLE *smt_table, TR_PACKET *tr_packet)
 
     smt_table->type = tr_packet->header.type;
     smt_table->raw_data_l = tr_packet->pkt_l;
-    memcpy(smt_table->raw_data, tr_packet->pkt_buff, tr_packet->pkt_l);
+    memcpy(smt_table->raw_data, tr_packet->pkt_buff, (int)tr_packet->pkt_l);
 }
 
 /**********/
@@ -350,6 +350,8 @@ void nas_smt_csv(FEP *fep, SMARTOPTION_TABLE *smt_table)
     struct tm tm, tx;
     struct stat lstat;
     char logdir[1024], logmsg[1024 * 8], logheader[1024 * 8], logpath[128], mode[8];
+    char rawdata[1024 * 8];
+    int ii, len;
 
     if (smt_table->loglevel > fep->llog)
     {
@@ -395,8 +397,21 @@ void nas_smt_csv(FEP *fep, SMARTOPTION_TABLE *smt_table)
         }
     }
 
-    sprintf(logheader, "Date,Time,%s,Raw Data,", smt_table->loghead);
-    sprintf(logmsg, "%02d/%02d,%02d:%02d:%02d,%s,", tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, smt_table->logmsg);
+    memset(rawdata, 0x00, sizeof(rawdata));
+    for (ii = 0; ii < smt_table->raw_data_l; ii++)
+    {
+        len = strlen(rawdata);
+        sprintf(&rawdata[len], "%02X ", (unsigned char)smt_table->raw_data[ii]);
+    }
+
+    if(smt_table->loghead[strlen(smt_table->loghead) - 1] == ',')
+        smt_table->loghead[strlen(smt_table->loghead) - 1] = '\0';
+
+    if(smt_table->logmsg[strlen(smt_table->logmsg) - 1] == ',')
+        smt_table->logmsg[strlen(smt_table->logmsg) - 1] = '\0';
+
+    sprintf(logheader, "Date,Time,%s,Raw Data", smt_table->loghead);
+    sprintf(logmsg, "%02d/%02d,%02d:%02d:%02d,%s,%s", tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, smt_table->logmsg, rawdata);
 
     if ((logF = fopen(logpath, mode)) != NULL)
     {
@@ -405,9 +420,7 @@ void nas_smt_csv(FEP *fep, SMARTOPTION_TABLE *smt_table)
         if (ftell(logF) == 0)
             fprintf(logF, "%s\n", logheader);
 
-        fprintf(logF, "%s", logmsg);
-        fwrite(smt_table->raw_data, 1, smt_table->raw_data_l, logF);
-        fputc('\n', logF);
+        fprintf(logF, "%s\n", logmsg);
         fclose(logF);
     }
 }

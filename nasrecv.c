@@ -3,9 +3,14 @@
 #include <getopt.h>
 #include "nassmt.h"
 
-int start_analyze();
-int start_receive();
-void process_arguments(int argc, char **argv);
+#define MAX_STACK_FRAMES 128
+
+typedef struct
+{
+    char errname[512];
+    char reason[1024];
+    char where[1024];
+} ERROR_INFO;
 
 FEP *fep;
 static char *exchange_name;
@@ -20,6 +25,12 @@ char *domain_filename;
 char *NASDAQ_EMI_FILENAME = "/dat/feplog/Nasdaq/07272020_000008938M.smrtopt.ch5";
 // char *NASDAQ_EMI_FILENAME = "/dat/feplog/Nasdaq/test.txt";
 
+int start_analyze();
+int start_receive();
+void process_arguments(int argc, char **argv);
+void signal_handler(int signo);
+void print_trace(ERROR_INFO *error_info);
+void stopit(int signo);
 void usage(const char *program_name)
 {
     printf("Usage:\n");
@@ -49,6 +60,11 @@ int main(int argc, char **argv)
             fprintf(stderr, "Cannot open FEP interface for exchange '%s'\n", exchange_name);
         return (-1);
     }
+
+    signal(SIGSEGV, signal_handler); // Segmentaion Fault 발생 시, 오류 발생 지점 logging
+    signal(SIGINT, stopit);
+    signal(SIGQUIT, stopit);
+    signal(SIGTERM, stopit);
 
     if (is_analyze)
         start_analyze();
@@ -211,4 +227,59 @@ void process_arguments(int argc, char **argv)
         exchange_name = argv[optind];
         port_name = argv[optind + 1];
     }
+}
+
+void stopit(int signo)
+{
+    fep_close(fep);
+    exit(0);
+}
+
+void print_trace(ERROR_INFO *error_info)
+{
+    void *array[MAX_STACK_FRAMES];
+    size_t size;
+    char **strings;
+    size_t i;
+
+    size = backtrace(array, MAX_STACK_FRAMES);
+    strings = backtrace_symbols(array, size);
+
+    int offset = 0;
+    for (i = 0; i < size; i++)
+    {
+        int printed = snprintf(&error_info->where[offset], sizeof(error_info->where) - offset, "%s\n", strings[i]);
+        if (printed > 0)
+        {
+            offset += printed;
+        }
+    }
+
+    free(strings);
+}
+
+void signal_handler(int signo)
+{
+    ERROR_INFO error_info;
+
+    memset(&error_info, 0x00, sizeof(ERROR_INFO));
+
+    switch (signo)
+    {
+    case SIGSEGV:
+        strncpy(error_info.errname, "Segmentation Fault", sizeof(error_info.errname) - 1);
+        print_trace(&error_info);
+        break;
+    default:
+        break;
+    }
+
+    fep_log(fep, FL_ERROR,
+            "\n############################################################\n"
+            "1) Error: %s\n"
+            "2) Where:\n%s"
+            "############################################################",
+            error_info.errname, error_info.where);
+
+    stopit(signo);
 }

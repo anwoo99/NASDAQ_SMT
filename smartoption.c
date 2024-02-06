@@ -108,13 +108,12 @@ int _smt_csv(SMARTOPTION_TABLE *smt_table, FIXEDFLD *fixedfld)
 {
     int ii = 0;
     int head_l, msg_l;
-    int offset = 0;
 
     for (ii = 0; strlen(fixedfld[ii].field_name) > 0; ii++)
     {
         head_l = strlen(smt_table->loghead);
 
-        sprintf(&smt_table->loghead[head_l], "%s,", fixedfld[ii].field_name, fixedfld[ii].field_name);
+        sprintf(&smt_table->loghead[head_l], "%s,", fixedfld[ii].field_name);
 
         msg_l = strlen(smt_table->logmsg);
 
@@ -380,7 +379,7 @@ int smt_appendage_decode(SMARTOPTION_TABLE *smt_table, int *offset)
 int smt_market_header_decode(SMARTOPTION_TABLE *smt_table)
 {
     MarketDataHeader *header = &smt_table->market_data.header;
-    int offset = MARKET_HEADER_MSG_TYPE_LEN;
+    int offset = 0;
     FIXEDFLD fixedfld[] = {
         {"Message Type", FIXEDFLD_BITMASK, &MARKET_HEADER_MSG_TYPE_LEN, (void *)&header->msgtype},
         {"Protocol ID", FIXEDFLD_UINT, &MARKET_HEADER_PROTOCOLID_LEN, (void *)&header->protocol_id},
