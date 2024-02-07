@@ -16,14 +16,13 @@ FEP *fep;
 static char *exchange_name;
 static char *port_name;
 static int is_analyze = 0;
+static char NASDAQ_EMI_FILENAME[256];
+static char DEFAULT_SMARTLOG_DIR[] = "/mdfsvc/fep/log/Smart";
 
 /* Unix Domain Socket */
 int domain_socket = 0;
 struct sockaddr_un target_addr;
 char *domain_filename;
-
-char *NASDAQ_EMI_FILENAME = "/dat/feplog/Smart/07272020_000008938M.smrtopt.ch5";
-// char *NASDAQ_EMI_FILENAME = "/dat/feplog/Nasdaq/test.txt";
 
 int start_analyze();
 int start_receive();
@@ -31,14 +30,15 @@ void process_arguments(int argc, char **argv);
 void signal_handler(int signo);
 void print_trace(ERROR_INFO *error_info);
 void stopit(int signo);
+static void print_progress(long bytesRead, long totalFileSize);
 void usage(const char *program_name)
 {
     printf("Usage:\n");
     printf("  %s [Options]\n", program_name);
     printf("  %s <exchange_name> <port_name>\n", program_name);
     printf("\nOptions:\n");
-    printf("  --analyze       Perform analysis\n");
-    printf("  -a              Perform analysis\n");
+    printf("  --analyze <filename>      Perform analysis\n");
+    printf("  -a <filename>             Perform analysis\n");
     printf("\nArguments:\n");
     printf("  <exchange_name>  Name of the exchange\n");
     printf("  <port_name>      Port name for the exchange\n");
@@ -155,15 +155,10 @@ int start_analyze()
             }
         }
 
-        // Print reading progress percentage
-        curr_read_percent = (bytesRead * 100 / totalFileSize);
-
-        if (bef_read_percent != curr_read_percent)
-        {
-            printf("Read %ld%% of the file...\n", curr_read_percent);
-            bef_read_percent = curr_read_percent;
-        }
+        print_progress(bytesRead, totalFileSize);
     }
+
+    printf("\nFile read complete!\n");
 
     // Close the file
     fclose(file);
@@ -209,6 +204,11 @@ void process_arguments(int argc, char **argv)
             is_analyze = 1;
             exchange_name = "OSMT";
             domain_filename = "/mdfsvc/fep/que/SMTTEST";
+            if (argc < 3)
+            {
+                usage(basename(argv[0]));
+            }
+            sprintf(NASDAQ_EMI_FILENAME, "%s/%s", DEFAULT_SMARTLOG_DIR, argv[2]);
             break;
         default:
             usage(basename(argv[0]));
@@ -282,4 +282,29 @@ void signal_handler(int signo)
             error_info.errname, error_info.where);
 
     stopit(signo);
+}
+
+static void print_progress(long bytesRead, long totalFileSize)
+{
+    // 프로그레스 바 길이 설정
+    const int bar_length = 50;
+
+    // 현재 진행률 계산
+    int progress = (int)(bar_length * bytesRead / totalFileSize);
+
+    // 터미널에 프로그레스 바 출력
+    printf("\r[");
+    for (int i = 0; i < bar_length; ++i)
+    {
+        if (i < progress)
+        {
+            printf("#");
+        }
+        else
+        {
+            printf(" ");
+        }
+    }
+    printf("] %3d%%", (int)(100 * bytesRead / totalFileSize));
+    fflush(stdout);
 }
