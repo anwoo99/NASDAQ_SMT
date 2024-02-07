@@ -30,7 +30,7 @@ void process_arguments(int argc, char **argv);
 void signal_handler(int signo);
 void print_trace(ERROR_INFO *error_info);
 void stopit(int signo);
-static void print_progress(long bytesRead, long totalFileSize);
+static void print_progress(long bytesRead, long totalFileSize, time_t start_time);
 void usage(const char *program_name)
 {
     printf("Usage:\n");
@@ -85,6 +85,7 @@ int main(int argc, char **argv)
 int start_analyze()
 {
     int retv;
+    time_t start_time;
 
     // Open the binary file for reading
     FILE *file = fopen(NASDAQ_EMI_FILENAME, "rb");
@@ -118,6 +119,8 @@ int start_analyze()
         fep_log(fep, FL_ERROR, "Failed to set socket");
         exit(EXIT_FAILURE);
     }
+
+    start_time = time(NULL);
 
     // Main loop to read and process the file
     while ((msgbuff.read_size = fread(&msgbuff.buffer[msgbuff.rest_size], 1, sizeof(msgbuff.buffer) - msgbuff.rest_size, file)) > 0)
@@ -155,7 +158,7 @@ int start_analyze()
             }
         }
 
-        print_progress(bytesRead, totalFileSize);
+        print_progress(bytesRead, totalFileSize, start_time);
     }
 
     printf("\nFile read complete!\n");
@@ -231,6 +234,7 @@ void process_arguments(int argc, char **argv)
 
 void stopit(int signo)
 {
+    printf("\n");
     fep_close(fep);
     exit(0);
 }
@@ -284,16 +288,40 @@ void signal_handler(int signo)
     stopit(signo);
 }
 
-static void print_progress(long bytesRead, long totalFileSize)
+static void format_size(long size, char *result, int result_size)
 {
+    const char *units[] = {"B", "KB", "MB", "GB", "TB"};
+    int unit_index = 0;
+
+    while (size > 1024 && unit_index < sizeof(units) / sizeof(units[0]) - 1)
+    {
+        size /= 1024;
+        unit_index++;
+    }
+
+    snprintf(result, result_size, "%ld %s", size, units[unit_index]);
+}
+
+static void print_progress(long bytesRead, long totalFileSize, time_t start_time)
+{
+    char currentReadSize[20];
+    char currentTotalSize[20];
+
     // 프로그레스 바 길이 설정
     const int bar_length = 50;
 
     // 현재 진행률 계산
     int progress = (int)(bar_length * bytesRead / totalFileSize);
 
+    // 현재 시간
+    time_t current_time;
+    time(&current_time);
+
+    format_size(bytesRead, currentReadSize, sizeof(currentReadSize));
+    format_size(totalFileSize, currentTotalSize, sizeof(currentTotalSize));
+
     // 터미널에 프로그레스 바 출력
-    printf("\r[");
+    printf("\r\033[K Progress: %3d%% [", (int)(100 * bytesRead / totalFileSize));
     for (int i = 0; i < bar_length; ++i)
     {
         if (i < progress)
@@ -302,9 +330,10 @@ static void print_progress(long bytesRead, long totalFileSize)
         }
         else
         {
-            printf(" ");
+            printf("-");
         }
     }
-    printf("] %3d%%", (int)(100 * bytesRead / totalFileSize));
-    fflush(stdout);
+    printf("] Read: %s | Total: %s\n", currentReadSize, currentTotalSize);
+    //fflush(stdout);
+    printf("\033[A"); // 첫 커서로 이동
 }
