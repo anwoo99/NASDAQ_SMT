@@ -3,13 +3,13 @@ include ../environments
 LIB=$(LIB_DIR)
 INC=$(INC_DIR)
 CFLAGS= -g -O -I./ -I../inc $(FEP_CFLAGS) 
-LFLAGS=$(FEP_LFLAGS) -L../lib/fep -lFEP -lm -w
+LFLAGS=$(FEP_LFLAGS) -L../lib/fep -lFEP -lm -w -rdynamic -g
 AFLAGS=$(MY_AFLAGS)
 AROPTS=$(MY_AROPTS)
-LIBOBJ=libNASOBJ.o
+LIBOBJ=libSMTOBJ.o
 
 INCINC=../inc/context.h ../inc/fep.h ../inc/schema.h ../inc/stream.h ../inc/config.h
-CMD=nasrecv nasfep
+CMD=smtrecv smtfep
 
 # Default Rules:
 .c:
@@ -30,22 +30,23 @@ CMD=nasrecv nasfep
 
 all:	$(CMD) $(CHK)
 
-nasrecv:nasrecv.o $(LIBOBJ) 
-	$(CC) -o nasrecv nasrecv.o $(LIBOBJ) $(LFLAGS)
-nasfep:nasfep.o	$(LIBOBJ)
-	$(CC) -o nasfep nasfep.o $(LIBOBJ) $(LFLAGS)
+smtrecv:smtrecv.o $(LIBOBJ) 
+	$(CC) -o smtrecv smtrecv.o $(LIBOBJ) $(LFLAGS)
+smtfep:smtfep.o	$(LIBOBJ)
+	$(CC) -o smtfep smtfep.o $(LIBOBJ) $(LFLAGS)
 
-nasfep.o: nasfep.c $(INCINC)
-nasrecv.o: nasrecv.c $(INCINC)
-$(LIBOBJ):	$(LIBOBJ)(smartoption.o)	$(LIBOBJ)(nastool.o)	\
-		$(LIBOBJ)(moldudp64.o)
+smtfep.o: smtfep.c $(INCINC)
+smtrecv.o: smtrecv.c $(INCINC)
+$(LIBOBJ):	$(LIBOBJ)(smartoption.o)	$(LIBOBJ)(smttool.o)	\
+		$(LIBOBJ)(moldudp64.o)		$(LIBOBJ)(smt_0x33.o)
 		if [ -s /usr/bin/ranlib ]; then ranlib $(LIBOBJ); fi
 		@echo $(LIBOBJ) is up-to-date.
 
 
 $(LIBOBJ)(smartopion.o):	$(INCINC)
-$(LIBOBJ)(nastool.o):		$(INCINC)
+$(LIBOBJ)(smttool.o):		$(INCINC)
 $(LIBOBJ)(moldudp64.o):		$(INCINC)
+$(LIBOBJ)(smt_0x33.o):		$(INCINC)
 
 install: all
 	cp -f $(CMD) $(BIN_DIR)

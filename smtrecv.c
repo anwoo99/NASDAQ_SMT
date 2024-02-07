@@ -22,7 +22,7 @@ int domain_socket = 0;
 struct sockaddr_un target_addr;
 char *domain_filename;
 
-char *NASDAQ_EMI_FILENAME = "/dat/feplog/Nasdaq/07272020_000008938M.smrtopt.ch5";
+char *NASDAQ_EMI_FILENAME = "/dat/feplog/Smart/07272020_000008938M.smrtopt.ch5";
 // char *NASDAQ_EMI_FILENAME = "/dat/feplog/Nasdaq/test.txt";
 
 int start_analyze();

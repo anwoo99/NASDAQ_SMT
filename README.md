@@ -7,9 +7,9 @@
     - [1.1. Data 수신 프로토콜](#11-data-수신-프로토콜)
     - [1.2. Data 포맷](#12-data-포맷)
   - [2. 구현 프로세스](#2-구현-프로세스)
-    - [2.1. 수신 프로세스(nasrecv)](#21-수신-프로세스nasrecv)
+    - [2.1. 수신 프로세스(smtrecv)](#21-수신-프로세스smtrecv)
       - [2.1.1. Command](#211-command)
-    - [2.2. 가공 프로세스(nasfep)](#22-가공-프로세스nasfep)
+    - [2.2. 가공 프로세스(smtfep)](#22-가공-프로세스smtfep)
       - [2.2.1. Command](#221-command)
 
 ## 1. NASDAQ Smartoption Spec Sheet
@@ -25,10 +25,10 @@
 
 
 ## 2. 구현 프로세스
-### 2.1. 수신 프로세스(nasrecv)
+### 2.1. 수신 프로세스(smtrecv)
 #### 2.1.1. Command
 
-### 2.2. 가공 프로세스(nasfep)
+### 2.2. 가공 프로세스(smtfep)
 #### 2.2.1. Command
 
 

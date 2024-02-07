@@ -180,7 +180,7 @@ typedef struct
 #define WORLD_CURRENCY_PRODUCT 10
 #define FIXED_INCOME_PRODUCT 12
 #define FUTURES_CONTRACT_PRODUCT 14
-#define OPTION_ROOT_PRODUCT 23 
+#define OPTION_ROOT_PRODUCT 23
 
 typedef struct
 {
@@ -396,10 +396,11 @@ typedef struct
 // Total Table
 typedef struct
 {
+    FEP *fep;
+    TOKEN *token;
     char name[256];
     int loglevel;
     int logflag;
-    int (*proc)(FEP *, TOKEN *, SMARTOPTION_TABLE *);
     uint64_t type;
     int class;
     char loghead[MAX_LOG_MSG];
@@ -419,9 +420,15 @@ typedef struct
 /* smartoption.c */
 /*****************/
 int smt_decode(SMARTOPTION_TABLE *smt_table);
+int smt_proc(SMARTOPTION_TABLE *smt_table);
+
+/**************/
+/* smt_0x33.c */
+/**************/
+int smt_0x33(SMARTOPTION_TABLE *smt_table);
 
 /*************/
-/* nastool.c */
+/* smttool.c */
 /*************/
 // Convert Function
 void convert_big_endian_to_uint64_t(char *from, uint64_t *to, size_t size);
@@ -437,7 +444,7 @@ void initialize_msg_buff(MSGBUFF *msgbuff);
 // TR Packet
 int allocate_tr_packet(TR_PACKET *tr_packet, char *message_data, size_t message_length);
 void initialize_tr_packet(TR_PACKET *tr_packet);
-void tr2smart(SMARTOPTION_TABLE *smt_table, TR_PACKET *tr_packet);
+void initialize_smart(SMARTOPTION_TABLE *smt_table, FEP *fep, TOKEN *token);
 
 // msgb -> fixedfld
 int msg2fixedfld(FIXEDFLD *fixedfld, char *msgb, int offset);
@@ -445,7 +452,7 @@ void decode_fixedfld(FIXEDFLD *fixedfld, char *msgb, int *offset, int fldnum);
 void decode_fixedfld_all(FIXEDFLD *fixedfld, char *msgb, int *offset);
 
 // Logger
-void nas_smt_log(FEP *fep, SMARTOPTION_TABLE *smt_table,  const char *format, ...);
+void nas_smt_log(FEP *fep, SMARTOPTION_TABLE *smt_table, const char *format, ...);
 void nas_smt_csv(FEP *fep, SMARTOPTION_TABLE *smt_table);
 
 /*************/

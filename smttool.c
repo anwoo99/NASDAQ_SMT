@@ -230,10 +230,16 @@ void initialize_tr_packet(TR_PACKET *tr_packet)
     tr_packet->header.type = 0;
 }
 
-void tr2smart(SMARTOPTION_TABLE *smt_table, TR_PACKET *tr_packet)
+void initialize_smart(SMARTOPTION_TABLE *smt_table, FEP *fep, TOKEN *token)
 {
+    TR_PACKET *tr_packet;
+
     memset(smt_table, 0x00, sizeof(SMARTOPTION_TABLE));
 
+    smt_table->fep = fep;
+    smt_table->token = token;
+
+    tr_packet = (TR_PACKET *)token->rcvb;
     smt_table->type = tr_packet->header.type;
     smt_table->raw_data_l = tr_packet->pkt_l;
     memcpy(smt_table->raw_data, tr_packet->pkt_buff, (int)tr_packet->pkt_l);
@@ -285,7 +291,7 @@ void nas_smt_log(FEP *fep, SMARTOPTION_TABLE *smt_table, const char *format, ...
     clock += fep->e2lt;
     localtime_r(&clock, &tm);
 
-    sprintf(logdir, "%s/Nasdaq", LOG_DIR);
+    sprintf(logdir, "%s/Smart", LOG_DIR);
 
     if (createDirectory(logdir) != 0)
     {
@@ -362,7 +368,7 @@ void nas_smt_csv(FEP *fep, SMARTOPTION_TABLE *smt_table)
     clock += fep->e2lt;
     localtime_r(&clock, &tm);
 
-    sprintf(logdir, "%s/Nasdaq", LOG_DIR);
+    sprintf(logdir, "%s/Smart", LOG_DIR);
 
     if (createDirectory(logdir) != 0)
     {

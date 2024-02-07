@@ -1,24 +1,26 @@
 #include "nassmt.h"
 
-static int nas_equity(FEP *fep, SMARTOPTION_TABLE *smt_table);
+static int _smt_equity(FEP *fep, TOKEN *token, SMARTOPTION_TABLE *smt_table);
+static int _smt_root(FEP *fep, TOKEN *token, SMARTOPTION_TABLE *smt_table);
+static int _smt_option(FEP *fep, TOKEN *token, SMARTOPTION_TABLE *smt_table);
+
 static FOLDER *_init_symbol(FEP *fep, char *symbol);
 
-int nas_0x33(FEP *fep, TOKEN *token, SMARTOPTION_TABLE *smt_table)
+int smt_0x33(SMARTOPTION_TABLE *smt_table)
 {
-    MDARCH *arch;
-    int retv = 0;
+    InstrumentLocate *inst = &smt_table->instrument_locate;
 
-    // EQUITY <- OPTION ROOT <- OPTION PRODUCT 순서
-    switch (product_type)
+    // EQUITY -> OPTION ROOT -> OPTION PRODUCT 순서
+    switch (inst->product_type)
     {
-    case EQUITY_PRODUCT:
-        nas_equity(fep, smt_table);
+    case EQUITY_PRODUCT: // 1단계
+        _smt_equity(smt_table->fep, smt_table->token, (SMARTOPTION_TABLE *)smt_table);
         break;
-    case OPTION_ROOT_PRODUCT:
-        nas_root(fep, smt_table);
+    case OPTION_ROOT_PRODUCT: // 2단계
+        _smt_root(smt_table->fep, smt_table->token, (SMARTOPTION_TABLE *)smt_table);
         break;
-    case OPTION_PRODUCT:
-        nas_option(fep, smt_table);
+    case OPTION_PRODUCT: // 3단계
+        _smt_option(smt_table->fep, smt_table->token, (SMARTOPTION_TABLE *)smt_table);
         break;
     case INDEX_PRODUCT:
     case WORLD_CURRENCY_PRODUCT:
@@ -32,10 +34,10 @@ int nas_0x33(FEP *fep, TOKEN *token, SMARTOPTION_TABLE *smt_table)
     return (0);
 }
 
-static int nas_equity(FEP *fep, SMARTOPTION_TABLE *smt_table)
+static int _smt_equity(FEP *fep, TOKEN *token, SMARTOPTION_TABLE *smt_table)
 {
     SYMBOL *symbol;
-    INSTRUMENT_LOCATE *inst = &smt_table->instrument_locate;
+    InstrumentLocate *inst = &smt_table->instrument_locate;
 
     // Symbol Check
     symbol = fep_symbget(fep, inst->symbol);
@@ -53,14 +55,14 @@ static int nas_equity(FEP *fep, SMARTOPTION_TABLE *smt_table)
     return (0);
 }
 
-static int nas_root(FEP *fep, SMARTOPTION_TABLE *smt_table)
+static int _smt_root(FEP *fep, TOKEN *token, SMARTOPTION_TABLE *smt_table)
 {
-    INSTRUMENT_LOCATE *inst = &smt_table->instrument_locate;
+    InstrumentLocate *inst = &smt_table->instrument_locate;
 
     // Parent Locate Check
     if (chkbit(fep->bit, inst->parent_locate_code) == 0)
     {
-        fep_log(fep, FL_DEBUG, "1) Cannot find the matching parent locate code for '%s'", inst->symbol);
+        fep_log(fep, FL_DEBUG, "Cannot find the matching parent locate code for '%s' root", inst->symbol);
         return (-1);
     }
 
@@ -70,9 +72,9 @@ static int nas_root(FEP *fep, SMARTOPTION_TABLE *smt_table)
     return (0);
 }
 
-static int nas_option(FEP *fep, SMARTOPTION_TABLE *smt_table)
+static int _smt_option(FEP *fep, TOKEN *token, SMARTOPTION_TABLE *smt_table)
 {
-    INSTRUMENT_LOCATE *inst = &smt_table->instrument_locate;
+    InstrumentLocate *inst = &smt_table->instrument_locate;
     FOLDER *folder;
     MDMSTR *mstr, t_mstr;
     char check[8];
@@ -83,7 +85,7 @@ static int nas_option(FEP *fep, SMARTOPTION_TABLE *smt_table)
     // Parent Locate Check
     if (chkbit(fep->bit, inst->parent_locate_code) == 0)
     {
-        fep_log(fep, FL_DEBUG, "2) Cannot find the matching parent locate code for '%s'", inst->symbol);
+        fep_log(fep, FL_DEBUG, "Cannot find the matching parent locate code for '%s' option", inst->symbol);
         return (-1);
     }
 
@@ -117,7 +119,7 @@ static int nas_option(FEP *fep, SMARTOPTION_TABLE *smt_table)
     // Decimal Denominator
     mstr->zdiv = (int)inst->strike.denominator;
 
-    if(memcmp(&t_mstr, mstr, sizeof(MDMSTR)) != 0)
+    if (memcmp(&t_mstr, mstr, sizeof(MDMSTR)) != 0)
     {
         mstr->uymd = token->xymd;
         mstr->uhms = token->xhms;

@@ -11,7 +11,7 @@ typedef struct
 
 FEP *fep;
 
-static int nasrcv(FEP *fep, void *argv);
+static int smtrcv(FEP *fep, void *argv);
 void signal_handler(int signo);
 void print_trace(ERROR_INFO *error_info);
 void stopit(int signo);
@@ -23,7 +23,7 @@ void usage(const char *program_name)
 }
 
 MDPROC procedure =
-    {NULL, nasrcv, NULL, NULL, NULL, NULL}; // function's table
+    {NULL, smtrcv, NULL, NULL, NULL, NULL}; // function's table
 
 int main(int argc, char **argv)
 {
@@ -46,8 +46,6 @@ int main(int argc, char **argv)
         return (-1);
     }
 
-    memset(fep->bit, 0x00, )
-
     arch = fep->arch;
     arch->intv = fep->xchg->intv;
 
@@ -56,28 +54,28 @@ int main(int argc, char **argv)
     signal(SIGQUIT, stopit);
     signal(SIGTERM, stopit);
 
+    fep->bit = inibit(IPCK(fep->xchg->ipck, COOKER, 1), 0);
+
     fep_init(fep, &procedure, 1);
     fep_close(fep);
     return (0);
 }
 
 /*
- * Function: nasrcv()
+ * Function: smtrcv()
  * -------------------------------------
- * nasrcv 송신 패킷 IPC 수신
+ * smtrcv 송신 패킷 IPC 수신
  */
-static int nasrcv(FEP *fep, void *argv)
+static int smtrcv(FEP *fep, void *argv)
 {
     MDARCH *arch = fep->arch;
     MDCTX *ctx = fep->ctx;
     TOKEN *token = argv;
-    TR_PACKET *tr_packet;
     SMARTOPTION_TABLE smt_table;
     int rc = 0;
 
-    tr_packet = (TR_PACKET *)token->rcvb;
-
-    tr2smart(&smt_table, tr_packet);
+    /* Initialize smart option table */
+    initialize_smart(&smt_table, fep, token);
 
     /* Smart Option Message Decoding */
     smt_decode(&smt_table);
@@ -87,8 +85,9 @@ static int nasrcv(FEP *fep, void *argv)
 
     /* Logging Raw Data in CSV Format */
     nas_smt_csv(fep, &smt_table);
-    
-    rc = (*smt_table.proc)(fep, token, &smt_table);
+
+    // Call the function
+    rc = smt_proc(&smt_table);
 
     return (rc);
 }
