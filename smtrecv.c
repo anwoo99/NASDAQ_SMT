@@ -1,6 +1,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <getopt.h>
+#include <dirent.h>
 #include "nassmt.h"
 
 #define MAX_STACK_FRAMES 128
@@ -16,8 +17,8 @@ FEP *fep;
 static char *exchange_name;
 static char *port_name;
 static int is_analyze = 0;
-static char NASDAQ_EMI_FILENAME[256];
-static char DEFAULT_SMARTLOG_DIR[] = "/mdfsvc/fep/log/Smart";
+static char NASDAQ_EMI_FILENAME[16][256];
+static char DEFAULT_SMARTLOG_DIR[] = "/mdfsvc/fep/log/Smart/raw";
 
 /* Unix Domain Socket */
 int domain_socket = 0;
@@ -30,7 +31,7 @@ void process_arguments(int argc, char **argv);
 void signal_handler(int signo);
 void print_trace(ERROR_INFO *error_info);
 void stopit(int signo);
-static void print_progress(long bytesRead, long totalFileSize, time_t start_time);
+static void print_progress(long bytesRead, long totalFileSize, char *filename);
 void usage(const char *program_name)
 {
     printf("Usage:\n");
@@ -39,6 +40,8 @@ void usage(const char *program_name)
     printf("\nOptions:\n");
     printf("  --analyze <filename>      Perform analysis\n");
     printf("  -a <filename>             Perform analysis\n");
+    printf("\n  --analyze all             Perform analysis on all files in %s\n", DEFAULT_SMARTLOG_DIR);
+    printf("  -a all                    Perform analysis on all files in %s\n", DEFAULT_SMARTLOG_DIR);
     printf("\nArguments:\n");
     printf("  <exchange_name>  Name of the exchange\n");
     printf("  <port_name>      Port name for the exchange\n");
@@ -85,86 +88,89 @@ int main(int argc, char **argv)
 int start_analyze()
 {
     int retv;
-    time_t start_time;
+    int ii = 0;
+    char filename[256];
 
-    // Open the binary file for reading
-    FILE *file = fopen(NASDAQ_EMI_FILENAME, "rb");
-    if (file == NULL)
+    while (strlen(NASDAQ_EMI_FILENAME[ii]) != 0)
     {
-        fep_log(fep, FL_ERROR, "Error opening file(%s)", NASDAQ_EMI_FILENAME);
-        exit(EXIT_FAILURE);
-    }
+        memset(filename, 0x00, sizeof(filename));
+        sprintf(filename, "%s/%s", DEFAULT_SMARTLOG_DIR, NASDAQ_EMI_FILENAME[ii]);
 
-    // For tracking file reading progress
-    long totalFileSize, bytesRead = 0;
-    long curr_read_percent = 0, bef_read_percent = 0;
-
-    // Obtain total file size
-    fseek(file, 0, SEEK_END);
-    totalFileSize = ftell(file);
-    fseek(file, 0, SEEK_SET);
-
-    // Initialize message buffer and TR_PACKET
-    MSGBUFF msgbuff;
-    MSG_BLOCK message_block;
-    char send_b[TR_PACKET_LEN];
-    TR_PACKET *tr_packet = (TR_PACKET *)send_b;
-
-    initialize_msg_buff(&msgbuff);
-    initialize_tr_packet(tr_packet);
-
-    // Set up the domain socket
-    if (socket_setting() < 0)
-    {
-        fep_log(fep, FL_ERROR, "Failed to set socket");
-        exit(EXIT_FAILURE);
-    }
-
-    start_time = time(NULL);
-
-    // Main loop to read and process the file
-    while ((msgbuff.read_size = fread(&msgbuff.buffer[msgbuff.rest_size], 1, sizeof(msgbuff.buffer) - msgbuff.rest_size, file)) > 0)
-    {
-        msgbuff.rest_size += msgbuff.read_size;
-        bytesRead += msgbuff.read_size;
-
-        // Process MoldUDP64 message blocks
-        while (1)
+        // Open the binary file for reading
+        FILE *file = fopen(filename, "rb");
+        if (file == NULL)
         {
-            retv = parser_moldudp64_message_block(&msgbuff, &message_block);
-
-            if (retv < 0)
-            {
-                fep_log(fep, FL_ERROR, "Error parsing MoldUDP64 message block.");
-                fclose(file);
-                return (-1);
-            }
-            else if (retv & MSG_BUFFER_SCARCED)
-            {
-                break;
-            }
-            else
-            {
-                // Allocate TR_PACKET and send to domain socket
-                allocate_tr_packet(tr_packet, message_block.data, message_block.msgl);
-
-                if (sendto(domain_socket, send_b, TR_PACKET_LEN, 0, (struct sockaddr *)&target_addr, sizeof(target_addr)) < 0)
-                {
-                    fep_log(fep, FL_ERROR, "sendto() to '%s' error(%d|%s)", domain_filename, errno, strerror(errno));
-                    fep_sleep(3000000);
-                    continue;
-                }
-                // fep_sleep(1000000);
-            }
+            fep_log(fep, FL_ERROR, "Error opening file(%s)", filename);
+            exit(EXIT_FAILURE);
         }
 
-        print_progress(bytesRead, totalFileSize, start_time);
+        // For tracking file reading progress
+        long totalFileSize, bytesRead = 0;
+        long curr_read_percent = 0, bef_read_percent = 0;
+
+        // Obtain total file size
+        fseek(file, 0, SEEK_END);
+        totalFileSize = ftell(file);
+        fseek(file, 0, SEEK_SET);
+
+        // Initialize message buffer and TR_PACKET
+        MSGBUFF msgbuff;
+        MSG_BLOCK message_block;
+        char send_b[TR_PACKET_LEN];
+        TR_PACKET *tr_packet = (TR_PACKET *)send_b;
+
+        initialize_msg_buff(&msgbuff);
+        initialize_tr_packet(tr_packet);
+
+        // Set up the domain socket
+        if (socket_setting() < 0)
+        {
+            fep_log(fep, FL_ERROR, "Failed to set socket");
+            exit(EXIT_FAILURE);
+        }
+
+        // Main loop to read and process the file
+        while ((msgbuff.read_size = fread(&msgbuff.buffer[msgbuff.rest_size], 1, sizeof(msgbuff.buffer) - msgbuff.rest_size, file)) > 0)
+        {
+            msgbuff.rest_size += msgbuff.read_size;
+            bytesRead += msgbuff.read_size;
+
+            // Process MoldUDP64 message blocks
+            while (1)
+            {
+                retv = parser_moldudp64_message_block(&msgbuff, &message_block);
+
+                if (retv < 0)
+                {
+                    fep_log(fep, FL_ERROR, "Error parsing MoldUDP64 message block.");
+                    fclose(file);
+                    return (-1);
+                }
+                else if (retv & MSG_BUFFER_SCARCED)
+                {
+                    break;
+                }
+                else
+                {
+                    // Allocate TR_PACKET and send to domain socket
+                    allocate_tr_packet(tr_packet, message_block.data, message_block.msgl);
+
+                    if (sendto(domain_socket, send_b, TR_PACKET_LEN, 0, (struct sockaddr *)&target_addr, sizeof(target_addr)) < 0)
+                    {
+                        // fep_log(fep, FL_ERROR, "sendto() to '%s' error(%d|%s)", domain_filename, errno, strerror(errno));
+                        fep_sleep(3000000);
+                        continue;
+                    }
+                }
+            }
+
+            print_progress(bytesRead, totalFileSize, NASDAQ_EMI_FILENAME[ii]);
+        }
+
+        // Close the file
+        fclose(file);
+        ii++;
     }
-
-    printf("\nFile read complete!\n");
-
-    // Close the file
-    fclose(file);
     return 0;
 }
 
@@ -191,12 +197,39 @@ int socket_setting()
     return (0);
 }
 
+void get_all_files_in_dir(char *dirname)
+{
+    DIR *dir;
+    struct dirent *entry;
+
+    dir = opendir(dirname);
+
+    if (dir == NULL)
+    {
+        return;
+    }
+
+    int ii = 0;
+    while ((entry = readdir(dir)) != NULL)
+    {
+        if (entry->d_type == DT_REG)
+        {
+            strcpy(NASDAQ_EMI_FILENAME[ii], entry->d_name);
+            ii++;
+        }
+    }
+
+    closedir(dir);
+}
+
 void process_arguments(int argc, char **argv)
 {
     int option;
     struct option long_options[] = {
         {"analyze", no_argument, 0, 'a'},
         {0, 0, 0, 0}};
+
+    memset(NASDAQ_EMI_FILENAME, 0x00, sizeof(NASDAQ_EMI_FILENAME));
 
     // Process options
     while ((option = getopt_long(argc, argv, "a", long_options, NULL)) != -1)
@@ -211,7 +244,15 @@ void process_arguments(int argc, char **argv)
             {
                 usage(basename(argv[0]));
             }
-            sprintf(NASDAQ_EMI_FILENAME, "%s/%s", DEFAULT_SMARTLOG_DIR, argv[2]);
+            if (strcmp(argv[2], "all") == 0)
+            {
+                get_all_files_in_dir(DEFAULT_SMARTLOG_DIR);
+            }
+            else
+            {
+                strcpy(NASDAQ_EMI_FILENAME[0], argv[2]);
+            }
+
             break;
         default:
             usage(basename(argv[0]));
@@ -302,7 +343,7 @@ static void format_size(long size, char *result, int result_size)
     snprintf(result, result_size, "%ld %s", size, units[unit_index]);
 }
 
-static void print_progress(long bytesRead, long totalFileSize, time_t start_time)
+static void print_progress(long bytesRead, long totalFileSize, char *filename)
 {
     char currentReadSize[20];
     char currentTotalSize[20];
@@ -313,15 +354,11 @@ static void print_progress(long bytesRead, long totalFileSize, time_t start_time
     // 현재 진행률 계산
     int progress = (int)(bar_length * bytesRead / totalFileSize);
 
-    // 현재 시간
-    time_t current_time;
-    time(&current_time);
-
     format_size(bytesRead, currentReadSize, sizeof(currentReadSize));
     format_size(totalFileSize, currentTotalSize, sizeof(currentTotalSize));
 
     // 터미널에 프로그레스 바 출력
-    printf("\r\033[K Progress: %3d%% [", (int)(100 * bytesRead / totalFileSize));
+    printf("\r\033[K %s %3d%%[", filename, (int)(100 * bytesRead / totalFileSize));
     for (int i = 0; i < bar_length; ++i)
     {
         if (i < progress)
@@ -334,6 +371,7 @@ static void print_progress(long bytesRead, long totalFileSize, time_t start_time
         }
     }
     printf("] Read: %s | Total: %s\n", currentReadSize, currentTotalSize);
-    //fflush(stdout);
+
+    // fflush(stdout);
     printf("\033[A"); // 첫 커서로 이동
 }

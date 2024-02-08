@@ -99,6 +99,12 @@ uint64_t OPTION_DELIVERY_COMPONENT_CURRENCY_CODE_LEN = 3;
 uint64_t OPTION_DELIVERY_COMPONENT_STRIKE_PERCENT_LEN = 2;
 uint64_t OPTION_DELIVERY_COMPONENT_COMPONENT_SYMBOL_LOCATE_LEN = 4;
 
+// 13. Default Len
+uint64_t DEFAULT_LEN_1 = 1;
+uint64_t DEFAULT_LEN_2 = 2;
+uint64_t DEFAULT_LEN_3 = 3;
+uint64_t DEFAULT_LEN_4 = 4;
+
 /*
  * Function: _smt_csv()
  * --------------------
@@ -136,6 +142,7 @@ int _smt_csv(SMARTOPTION_TABLE *smt_table, FIXEDFLD *fixedfld)
             break;
         case FIXEDFLD_BITMASK:
             sprintf(&smt_table->logmsg[msg_l], "0x%0*lX,", *(int *)(fixedfld[ii].field_length) * 2, *((uint64_t *)(fixedfld[ii].value)));
+
             break;
         default:
             strcpy(&smt_table->logmsg[msg_l], ",");
@@ -534,9 +541,9 @@ int smt_trade_decode(SMARTOPTION_TABLE *smt_table)
         {"Report Flags", FIXEDFLD_BITMASK, &TRADE_REPORT_FLAGS_LEN, (void *)&trade->report_flags},
         {"Change Flags", FIXEDFLD_BITMASK, &TRADE_CHANGE_FLAGS_LEN, (void *)&trade->change_flags},
         {"Cancel Flags", FIXEDFLD_BITMASK, &TRADE_CANCEL_FLAGS_LEN, (void *)&trade->cancel_flags},
-        {"Upstream Condition Detail", FIXEDFLD_STRING, NULL, (void *)&trade->upstream_condition_detail},
-        {"Trade Report Detail", FIXEDFLD_UINT, NULL, (void *)&trade->trade_report_detail},
-        {"Extended Report Flag", FIXEDFLD_BITMASK, NULL, (void *)&trade->extended_report_flags},
+        {"Upstream Condition Detail", FIXEDFLD_STRING, &DEFAULT_LEN_4, (void *)&trade->upstream_condition_detail},
+        {"Trade Report Detail", FIXEDFLD_UINT, &DEFAULT_LEN_4, (void *)&trade->trade_report_detail},
+        {"Extended Report Flag", FIXEDFLD_BITMASK, &DEFAULT_LEN_4, (void *)&trade->extended_report_flags},
         {"", 0, NULL, NULL}};
 
     smt_table->class = SMT_TRADE_CLASS;
@@ -713,11 +720,11 @@ int smt_decode(SMARTOPTION_TABLE *smt_table)
             {"Product Type", FIXEDFLD_UINT, &INSTRUMENT_LOCATE_PRODUCTTYPE_LEN, (void *)&smt_table->instrument_locate.product_type},
             {"Symbol Length", FIXEDFLD_UINT, &INSTRUMENT_LOCATE_SYMBOLLENGTH_LEN, (void *)&smt_table->instrument_locate.symbol_length},
             {"Symbol", FIXEDFLD_STRING, &smt_table->instrument_locate.symbol_length, (void *)smt_table->instrument_locate.symbol},
-            {"Root Symbol", FIXEDFLD_STRING, NULL, (void *)smt_table->instrument_locate.root},
-            {"Put/Call", FIXEDFLD_STRING, NULL, (void *)smt_table->instrument_locate.put_or_call},
-            {"Expiration Date", FIXEDFLD_UINT, NULL, (void *)&smt_table->instrument_locate.expiration_date},
-            {"Strike Price", FIXEDFLD_DECIMAL, NULL, (void *)&smt_table->instrument_locate.strike},
-            {"Parent Locate Code", FIXEDFLD_UINT, NULL, (void *)&smt_table->instrument_locate.parent_locate_code},
+            {"Root Symbol", FIXEDFLD_STRING, &DEFAULT_LEN_4, (void *)smt_table->instrument_locate.root},
+            {"Put/Call", FIXEDFLD_STRING, &DEFAULT_LEN_4, (void *)smt_table->instrument_locate.put_or_call},
+            {"Expiration Date", FIXEDFLD_UINT, &DEFAULT_LEN_4, (void *)&smt_table->instrument_locate.expiration_date},
+            {"Strike Price", FIXEDFLD_DECIMAL, &DEFAULT_LEN_4, (void *)&smt_table->instrument_locate.strike},
+            {"Parent Locate Code", FIXEDFLD_UINT, &DEFAULT_LEN_4, (void *)&smt_table->instrument_locate.parent_locate_code},
             {"", 0, NULL, NULL}};
         smt_default_decode(smt_table, fixedfld, is_market);
         break;
@@ -818,17 +825,17 @@ int smt_decode(SMARTOPTION_TABLE *smt_table)
             {"Instrument Locate", FIXEDFLD_UINT, &VALUE_UPDATE_INSTRUMENT_LOCATE_LEN, (void *)&smt_table->market_data.value_update.instrument_locate},
             {"Market Center Locate", FIXEDFLD_UINT, &VALUE_UPDATE_MARKET_CENTER_LOCATE_LEN, (void *)&smt_table->market_data.value_update.market_center_locate},
             {"Value Update Flags", FIXEDFLD_BITMASK, &VALUE_UPDATE_VALUE_UPDATE_FLAGS_LEN, (void *)&smt_table->market_data.value_update.value_update_flags},
-            {"High Price", FIXEDFLD_DECIMAL, NULL, (void *)&smt_table->market_data.value_update.high},
-            {"Low Price", FIXEDFLD_DECIMAL, NULL, (void *)&smt_table->market_data.value_update.low},
-            {"Last Price", FIXEDFLD_DECIMAL, NULL, (void *)&smt_table->market_data.value_update.last},
-            {"Open Price", FIXEDFLD_DECIMAL, NULL, (void *)&smt_table->market_data.value_update.open},
-            {"Total Volume", FIXEDFLD_UINT, NULL, (void *)&smt_table->market_data.value_update.total_volume},
-            {"Net Change", FIXEDFLD_DECIMAL, NULL, (void *)&smt_table->market_data.value_update.net_change},
-            {"Open Interest", FIXEDFLD_UINT, NULL, (void *)&smt_table->market_data.value_update.open_interest},
-            {"Tick", FIXEDFLD_DECIMAL, NULL, (void *)&smt_table->market_data.value_update.tick},
-            {"Bid", FIXEDFLD_DECIMAL, NULL, (void *)&smt_table->market_data.value_update.bid},
-            {"Ask", FIXEDFLD_DECIMAL, NULL, (void *)&smt_table->market_data.value_update.ask},
-            {"Underlying Price", FIXEDFLD_DECIMAL, NULL, (void *)&smt_table->market_data.value_update.underlying_price},
+            {"High Price", FIXEDFLD_DECIMAL, &DEFAULT_LEN_4, (void *)&smt_table->market_data.value_update.high},
+            {"Low Price", FIXEDFLD_DECIMAL, &DEFAULT_LEN_4, (void *)&smt_table->market_data.value_update.low},
+            {"Last Price", FIXEDFLD_DECIMAL, &DEFAULT_LEN_4, (void *)&smt_table->market_data.value_update.last},
+            {"Open Price", FIXEDFLD_DECIMAL, &DEFAULT_LEN_4, (void *)&smt_table->market_data.value_update.open},
+            {"Total Volume", FIXEDFLD_UINT, &DEFAULT_LEN_4, (void *)&smt_table->market_data.value_update.total_volume},
+            {"Net Change", FIXEDFLD_DECIMAL, &DEFAULT_LEN_4, (void *)&smt_table->market_data.value_update.net_change},
+            {"Open Interest", FIXEDFLD_UINT, &DEFAULT_LEN_4, (void *)&smt_table->market_data.value_update.open_interest},
+            {"Tick", FIXEDFLD_DECIMAL, &DEFAULT_LEN_4, (void *)&smt_table->market_data.value_update.tick},
+            {"Bid", FIXEDFLD_DECIMAL, &DEFAULT_LEN_4, (void *)&smt_table->market_data.value_update.bid},
+            {"Ask", FIXEDFLD_DECIMAL, &DEFAULT_LEN_4, (void *)&smt_table->market_data.value_update.ask},
+            {"Underlying Price", FIXEDFLD_DECIMAL, &DEFAULT_LEN_4, (void *)&smt_table->market_data.value_update.underlying_price},
             {"", 0, NULL, NULL}};
         smt_default_decode(smt_table, fixedfld, is_market);
         break;
@@ -886,7 +893,7 @@ int smt_decode(SMARTOPTION_TABLE *smt_table)
         FIXEDFLD fixedfld[] = {
             {"Message Type", FIXEDFLD_BITMASK, &INSTRUMENT_META_DATA_MSG_TYPE_LEN, (void *)&smt_table->reference.meta_data.msgtype},
             {"Locate Code", FIXEDFLD_UINT, &INSTRUMENT_META_DATA_LOCATE_CODE_LEN, (void *)&smt_table->reference.meta_data.locate_code},
-            {"Parent Symbol Locate", FIXEDFLD_UINT, NULL, (void *)&smt_table->reference.meta_data.parent_symbol_locate},
+            {"Parent Symbol Locate", FIXEDFLD_UINT, &DEFAULT_LEN_4, (void *)&smt_table->reference.meta_data.parent_symbol_locate},
             {"", 0, NULL, NULL}};
         smt_default_decode(smt_table, fixedfld, is_market);
         break;
@@ -929,7 +936,7 @@ int smt_decode(SMARTOPTION_TABLE *smt_table)
  * SMARTOPTION Table -> Shared Memory
  */
 int smt_proc(SMARTOPTION_TABLE *smt_table)
-{ 
+{
     int retv = 0;
 
     switch (smt_table->type)
@@ -960,10 +967,10 @@ int smt_proc(SMARTOPTION_TABLE *smt_table)
     {
         break;
     }
-    case SHORT_TRADE_MSG_TYPE: // 0x70
-    case LONG_TRADE_MSG_TYPE: // 0x71
+    case SHORT_TRADE_MSG_TYPE:    // 0x70
+    case LONG_TRADE_MSG_TYPE:     // 0x71
     case EXTENDED_TRADE_MSG_TYPE: // 0x72
-    case TRADE_CANCEL_MSG_TYPE: // 0x73
+    case TRADE_CANCEL_MSG_TYPE:   // 0x73
     {
         break;
     }
