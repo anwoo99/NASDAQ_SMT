@@ -393,11 +393,13 @@ typedef struct
 #define SMT_NBBO_CLASS 0x01
 #define SMT_TRADE_CLASS 0x02
 #define SMT_DEFAULT_CLASS 0x04
+
 // Total Table
-typedef struct
+typedef struct smartoption_table
 {
     FEP *fep;
     TOKEN *token;
+    int (*proc)(struct smartoption_table *);
     char name[256];
     int loglevel;
     int logflag;
@@ -416,11 +418,36 @@ typedef struct
 } SMARTOPTION_TABLE;
 #define SMARTOPTION_TABLE_SIZE sizeof(SMARTOPTION_TABLE)
 
+/*****************************/
+/* Locate code shared memory */
+/*****************************/
+#
+
+typedef struct
+{
+    char symbol[MAX_SYMB_LEN];
+    uint64_t locate_code;
+    uint64_t product_type;
+    INST_MAP *parent_inst;
+} INST_MAP;
+
+typedef struct shm_inst
+{
+    unsigned char *bits;
+    INST_MAP *inst_map;
+} SHM_INST;
+
 /*****************/
 /* smartoption.c */
 /*****************/
 int smt_decode(SMARTOPTION_TABLE *smt_table);
-int smt_proc(SMARTOPTION_TABLE *smt_table);
+
+
+/*****************/
+/* smtinst.c */
+/*****************/
+SHM_INST *initInst(FEP *fep, int key, int clr);
+
 
 /**************/
 /* smt_0x33.c */

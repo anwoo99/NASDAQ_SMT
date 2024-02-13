@@ -410,10 +410,10 @@ void nas_smt_csv(FEP *fep, SMARTOPTION_TABLE *smt_table)
         sprintf(&rawdata[len], "%02X ", (unsigned char)smt_table->raw_data[ii]);
     }
 
-    if(smt_table->loghead[strlen(smt_table->loghead) - 1] == ',')
+    if (smt_table->loghead[strlen(smt_table->loghead) - 1] == ',')
         smt_table->loghead[strlen(smt_table->loghead) - 1] = '\0';
 
-    if(smt_table->logmsg[strlen(smt_table->logmsg) - 1] == ',')
+    if (smt_table->logmsg[strlen(smt_table->logmsg) - 1] == ',')
         smt_table->logmsg[strlen(smt_table->logmsg) - 1] = '\0';
 
     sprintf(logheader, "Date,Time,%s,Raw Data", smt_table->loghead);

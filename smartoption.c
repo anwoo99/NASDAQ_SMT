@@ -727,6 +727,7 @@ int smt_decode(SMARTOPTION_TABLE *smt_table)
             {"Parent Locate Code", FIXEDFLD_UINT, &DEFAULT_LEN_4, (void *)&smt_table->instrument_locate.parent_locate_code},
             {"", 0, NULL, NULL}};
         smt_default_decode(smt_table, fixedfld, is_market);
+        smt_table->proc = smt_0x33;
         break;
     }
     case SHORT_2_SIDED_NBBO_MSG_TYPE: // 0x60
@@ -928,81 +929,4 @@ int smt_decode(SMARTOPTION_TABLE *smt_table)
     }
     }
     return (0);
-}
-
-/*
- * Function: smt_proc()
- * ----------------------------------
- * SMARTOPTION Table -> Shared Memory
- */
-int smt_proc(SMARTOPTION_TABLE *smt_table)
-{
-    int retv = 0;
-
-    switch (smt_table->type)
-    {
-    case SYSTEM_EVENT_MSG_TYPE: // 0x20
-    {
-        break;
-    }
-    case CHANNEL_SECONDS_MSG_TYPE: // 0x22
-    {
-        break;
-    }
-    case MARKET_CENTER_LOCATE_MSG_TYPE: // 0x30
-    {
-        break;
-    }
-    case INSTRUMENT_LOCATE_MSG_TYPE: // 0x33
-    {
-        retv = smt_0x33(smt_table);
-        break;
-    }
-    case SHORT_2_SIDED_NBBO_MSG_TYPE:    // 0x60
-    case LONG_2_SIDED_NBBO_MSG_TYPE:     // 0x61
-    case EXTENDED_2_SIDED_NBBO_MSG_TYPE: // 0x62
-    case SHORT_1_SIDED_NBBO_MSG_TYPE:    // 0x63
-    case LONG_1_SIDED_NBBO_MSG_TYPE:     // 0x64
-    case EXTENDED_1_SIDED_NBBO_MSG_TYPE: // 0x65
-    {
-        break;
-    }
-    case SHORT_TRADE_MSG_TYPE:    // 0x70
-    case LONG_TRADE_MSG_TYPE:     // 0x71
-    case EXTENDED_TRADE_MSG_TYPE: // 0x72
-    case TRADE_CANCEL_MSG_TYPE:   // 0x73
-    {
-        break;
-    }
-    case VALUE_UPDATE_MSG_TYPE: // 0x80
-    {
-        break;
-    }
-    case INSTRUMENT_STATUS_MSG_TYPE: // 0x90
-    {
-        break;
-    }
-    case CHANNEL_EVENT_MSG_TYPE: // 0xB0
-    {
-        break;
-    }
-    case ADMIN_TEXT_MSG_TYPE: // 0xB2
-    {
-        break;
-    }
-    case INSTRUMENT_META_DATA_MSG_TYPE: // 0xC0
-    {
-        break;
-    }
-    case OPTION_DELIVERY_COMPONENT_MSG_TYPE: // 0xC3
-    {
-        break;
-    }
-    default:
-    {
-        break;
-    }
-    }
-
-    return (retv);
 }
