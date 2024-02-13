@@ -418,23 +418,13 @@ typedef struct smartoption_table
 } SMARTOPTION_TABLE;
 #define SMARTOPTION_TABLE_SIZE sizeof(SMARTOPTION_TABLE)
 
-/*****************************/
-/* Locate code shared memory */
-/*****************************/
-#
-
+/***********************************/
+/* Instrument Locate shared memory */
+/***********************************/
 typedef struct
 {
-    char symbol[MAX_SYMB_LEN];
-    uint64_t locate_code;
-    uint64_t product_type;
-    INST_MAP *parent_inst;
-} INST_MAP;
-
-typedef struct shm_inst
-{
-    unsigned char *bits;
-    INST_MAP *inst_map;
+    InstrumentLocate *inst_list;
+    int inst_size;
 } SHM_INST;
 
 /*****************/
@@ -442,12 +432,15 @@ typedef struct shm_inst
 /*****************/
 int smt_decode(SMARTOPTION_TABLE *smt_table);
 
-
 /*****************/
 /* smtinst.c */
 /*****************/
-SHM_INST *initInst(FEP *fep, int key, int clr);
-
+int initInst(FEP *fep, int key, int clr);
+int deleteInst(SMARTOPTION_TABLE *smt_table, uint64_t locate_code);
+InstrumentLocate *createInst(SMARTOPTION_TABLE *smt_table);
+InstrumentLocate *updateInst(SMARTOPTION_TABLE *smt_table);
+InstrumentLocate *readInst(SMARTOPTION_TABLE *smt_table, uint64_t locate_code);
+InstrumentLocate *findParent(SMARTOPTION_TABLE *smt_table, uint64_t product_type);
 
 /**************/
 /* smt_0x33.c */
