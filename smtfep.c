@@ -54,7 +54,7 @@ int main(int argc, char **argv)
     signal(SIGQUIT, stopit);
     signal(SIGTERM, stopit);
 
-    fep->bit = initInst(fep, IPCK(fep->xchg->ipck, COOKER, 1), 0);
+    initInst(fep, IPCK(fep->xchg->ipck, COOKER, 1), 0);
 
     fep_init(fep, &procedure, 1);
     fep_close(fep);
@@ -87,7 +87,8 @@ static int smtrcv(FEP *fep, void *argv)
     nas_smt_csv(fep, &smt_table);
 
     // Call the function
-    rc = (*smt_table.proc)(&smt_table);
+    if(smt_table.proc != NULL)
+        rc = (*smt_table.proc)(&smt_table);
 
     return (rc);
 }

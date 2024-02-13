@@ -44,13 +44,13 @@ static int _smt_equity(FEP *fep, TOKEN *token, SMARTOPTION_TABLE *smt_table)
 
     if (symbol == NULL)
     {
-        clrbit(fep->bit, (unsigned int)inst->locate_code);
+        deleteInst(smt_table, inst->locate_code);
         fep_log(fep, FL_DEBUG, "There is no '%s' symbol in %s-symb.csv", inst->symbol, fep->exnm);
         return (-1);
     }
 
-    // Instrument Locate bit 등록
-    setbit(fep->bit, (unsigned int)inst->locate_code);
+    // Instrument Locate 등록
+    createInst(smt_table);
 
     return (0);
 }
@@ -60,14 +60,14 @@ static int _smt_root(FEP *fep, TOKEN *token, SMARTOPTION_TABLE *smt_table)
     InstrumentLocate *inst = &smt_table->instrument_locate;
 
     // Parent Locate Check
-    if (chkbit(fep->bit, inst->parent_locate_code) == 0)
+    if (readInst(smt_table, inst->parent_locate_code) == NULL)
     {
         fep_log(fep, FL_DEBUG, "Cannot find the matching parent locate code for '%s' root", inst->symbol);
         return (-1);
     }
 
-    // Instrument Locate bit 등록
-    setbit(fep->bit, inst->locate_code);
+    // Instrument Locate 등록
+    createInst(smt_table);
 
     return (0);
 }
@@ -75,6 +75,7 @@ static int _smt_root(FEP *fep, TOKEN *token, SMARTOPTION_TABLE *smt_table)
 static int _smt_option(FEP *fep, TOKEN *token, SMARTOPTION_TABLE *smt_table)
 {
     InstrumentLocate *inst = &smt_table->instrument_locate;
+    InstrumentLocate *parent;
     FOLDER *folder;
     MDMSTR *mstr, t_mstr;
     char check[8];
@@ -83,13 +84,16 @@ static int _smt_option(FEP *fep, TOKEN *token, SMARTOPTION_TABLE *smt_table)
         return (-1);
 
     // Parent Locate Check
-    if (chkbit(fep->bit, inst->parent_locate_code) == 0)
+    if (readInst(smt_table, inst->parent_locate_code) == NULL)
     {
         fep_log(fep, FL_DEBUG, "Cannot find the matching parent locate code for '%s' option", inst->symbol);
         return (-1);
     }
 
     // 만기일 확인 후 월물 제한
+    /*
+     *
+     */
 
     // Symbol 등록
     folder = _init_symbol(fep, inst->symbol);
@@ -118,6 +122,11 @@ static int _smt_option(FEP *fep, TOKEN *token, SMARTOPTION_TABLE *smt_table)
 
     // Decimal Denominator
     mstr->zdiv = (int)inst->strike.denominator;
+
+    // Underlying Symbol and Locate Code(finding Equity)
+    parent = findParent(smt_table, EQUITY_PRODUCT);
+    sprintf(mstr->unid, "%lu", parent->locate_code);
+    sprintf(mstr->unps, "%s", parent->symbol);
 
     if (memcmp(&t_mstr, mstr, sizeof(MDMSTR)) != 0)
     {
