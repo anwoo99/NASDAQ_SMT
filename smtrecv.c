@@ -347,6 +347,7 @@ static void print_progress(long bytesRead, long totalFileSize, char *filename)
 {
     char currentReadSize[20];
     char currentTotalSize[20];
+    int i;
 
     // 프로그레스 바 길이 설정
     const int bar_length = 50;
@@ -359,7 +360,7 @@ static void print_progress(long bytesRead, long totalFileSize, char *filename)
 
     // 터미널에 프로그레스 바 출력
     printf("\r\033[K %s %3d%%[", filename, (int)(100 * bytesRead / totalFileSize));
-    for (int i = 0; i < bar_length; ++i)
+    for (i = 0; i < bar_length; ++i)
     {
         if (i < progress)
         {
