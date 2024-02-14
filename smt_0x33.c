@@ -96,7 +96,7 @@ static int _smt_option(FEP *fep, TOKEN *token, SMARTOPTION_TABLE *smt_table)
      */
 
     // Symbol 등록
-    folder = _init_symbol(fep, inst->symbol);
+    folder = _init_symbol(fep, inst);
     mstr = &folder->mstr;
 
     // Master 정보가 바뀐 것이 있는지 확인하고자 temp용 변수 생성
@@ -123,6 +123,9 @@ static int _smt_option(FEP *fep, TOKEN *token, SMARTOPTION_TABLE *smt_table)
     // Decimal Denominator
     mstr->zdiv = (int)inst->strike.denominator;
 
+    // Short Exchange Name(MIC)
+    strcpy(mstr->exnm, inst->MIC);
+
     // Underlying Symbol and Locate Code(finding Equity)
     parent = findParent(smt_table, EQUITY_PRODUCT);
     sprintf(mstr->unid, "%lu", parent->locate_code);
@@ -141,25 +144,30 @@ static int _smt_option(FEP *fep, TOKEN *token, SMARTOPTION_TABLE *smt_table)
     return (0);
 }
 
-static FOLDER *_init_symbol(FEP *fep, char *symbol)
+static FOLDER *_init_symbol(FEP *fep, InstrumentLocate *inst)
 {
     FOLDER *folder = NULL;
     MDMSTR *mstr;
+    char corise_symbol[SYMB_LEN], local_symbol[SYMB_LEN];
+
+    strcpy(local_symbol, inst->symbol);
+    _convert_symbol(fep, corise_symbol, inst);
 
     /* 이미 해당 symbol에 관한 Folder가 존재하는지 확인 */
-    folder = getfolder(fep, symbol);
+    folder = getfolder(fep, local_symbol);
 
     if (folder != NULL)
         return (folder);
 
     /* Folder가 없다면 새로운 폴더 생성 */
-    folder = newfolder(fep, symbol);
+    folder = newfolder(fep, local_symbol);
 
     if (folder == NULL)
         return (NULL);
 
     /* 마스터 구조체 초기화 */
     mstr = &folder->mstr;
+    strcpy(mstr->code, local_symbol);
     mstr->pmul = 1;
     mstr->xdiv = 1;
     mstr->ydiv = 1;
@@ -167,6 +175,6 @@ static FOLDER *_init_symbol(FEP *fep, char *symbol)
     mstr->csiz = 1;
     mstr->feed = 1;
 
-    fep_log(fep, FL_PROGRESS, "The new symbol '%s' was added.", symbol);
+    fep_log(fep, FL_PROGRESS, "The new symbol '%s(%s)' was added.", corise_symbol, local_symbol);
     return (folder);
 }

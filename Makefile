@@ -39,7 +39,7 @@ smtfep.o: smtfep.c $(INCINC)
 smtrecv.o: smtrecv.c $(INCINC)
 $(LIBOBJ):	$(LIBOBJ)(smartoption.o)	$(LIBOBJ)(smttool.o)	\
 		$(LIBOBJ)(moldudp64.o)		$(LIBOBJ)(smt_0x33.o)	\
-		$(LIBOBJ)(smtinst.o)					
+		$(LIBOBJ)(smtinst.o)		$(LIBOBJ)(symbcnv.o)					
 		if [ -s /usr/bin/ranlib ]; then ranlib $(LIBOBJ); fi
 		@echo $(LIBOBJ) is up-to-date.
 
@@ -49,6 +49,7 @@ $(LIBOBJ)(smttool.o):		$(INCINC)
 $(LIBOBJ)(moldudp64.o):		$(INCINC)
 $(LIBOBJ)(smt_0x33.o):		$(INCINC)
 $(LIBOBJ)(smtinst.o):		$(INCINC)
+$(LIBOBJ)(symbcnv.o):		$(INCINC)
 
 install: all
 	cp -f $(CMD) $(BIN_DIR)
