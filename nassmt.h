@@ -3,6 +3,7 @@
 
 #include "context.h"
 #include <math.h>
+#include <limits.h>
 
 /************************************/
 /* Message Buffer Defined by Corise */
@@ -30,6 +31,7 @@ typedef struct
     int field_type;
     uint64_t *field_length;
     void *value;
+    int is_append;
 } FIXEDFLD;
 
 #define MAX_FIXEDFLD_SIZE 1024
@@ -423,8 +425,9 @@ typedef struct smartoption_table
 /***********************************/
 typedef struct
 {
+    unsigned char *bit;
+    int *inst_size;
     InstrumentLocate *inst_list;
-    int inst_size;
 } SHM_INST;
 
 /*****************/

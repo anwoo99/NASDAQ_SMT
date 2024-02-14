@@ -126,7 +126,7 @@ void decode_fixedfld_all(FIXEDFLD *fixedfld, char *msgb, int *offset)
     int fldnum = 0;
 
     // Iterate through fields and decode
-    while (fixedfld[fldnum].field_length != NULL)
+    while (fixedfld[fldnum].is_append == 0)
     {
         decode_fixedfld(fixedfld, msgb, offset, fldnum);
         fldnum++;

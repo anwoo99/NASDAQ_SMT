@@ -51,7 +51,6 @@ static int _smt_equity(FEP *fep, TOKEN *token, SMARTOPTION_TABLE *smt_table)
 
     // Instrument Locate 등록
     createInst(smt_table);
-
     return (0);
 }
 
@@ -62,6 +61,7 @@ static int _smt_root(FEP *fep, TOKEN *token, SMARTOPTION_TABLE *smt_table)
     // Parent Locate Check
     if (readInst(smt_table, inst->parent_locate_code) == NULL)
     {
+        deleteInst(smt_table, inst->locate_code);
         fep_log(fep, FL_DEBUG, "Cannot find the matching parent locate code for '%s' root", inst->symbol);
         return (-1);
     }
@@ -126,7 +126,7 @@ static int _smt_option(FEP *fep, TOKEN *token, SMARTOPTION_TABLE *smt_table)
     // Underlying Symbol and Locate Code(finding Equity)
     parent = findParent(smt_table, EQUITY_PRODUCT);
     sprintf(mstr->unid, "%lu", parent->locate_code);
-    sprintf(mstr->unps, "%s", parent->symbol);
+    sprintf(mstr->unps, "%.31s", parent->symbol);
 
     if (memcmp(&t_mstr, mstr, sizeof(MDMSTR)) != 0)
     {

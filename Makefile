@@ -38,8 +38,8 @@ smtfep:smtfep.o	$(LIBOBJ)
 smtfep.o: smtfep.c $(INCINC)
 smtrecv.o: smtrecv.c $(INCINC)
 $(LIBOBJ):	$(LIBOBJ)(smartoption.o)	$(LIBOBJ)(smttool.o)	\
-		$(LIBOBJ)(moldudp64.o)		$(LIBOBJ)(smt_0x33.o)		\
-		$(LIBOBJ)(smtinst.o)		\
+		$(LIBOBJ)(moldudp64.o)		$(LIBOBJ)(smt_0x33.o)	\
+		$(LIBOBJ)(smtinst.o)					
 		if [ -s /usr/bin/ranlib ]; then ranlib $(LIBOBJ); fi
 		@echo $(LIBOBJ) is up-to-date.
 

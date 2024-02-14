@@ -15,8 +15,8 @@ int parser_moldudp64_message_block(MSGBUFF *msgbuff, MSG_BLOCK *msgblock)
 {
     int retv = 0;
     FIXEDFLD fixedfld[] = {
-        {"Message Length", FIXEDFLD_UINT, &UDP_DWN_MSGBLK_MSGLEN_LEN, &msgblock->msgl},
-        {"Message Data", FIXEDFLD_STRING, &msgblock->msgl, msgblock->data}};
+        {"Message Length", FIXEDFLD_UINT, &UDP_DWN_MSGBLK_MSGLEN_LEN, &msgblock->msgl, 0},
+        {"Message Data", FIXEDFLD_STRING, &msgblock->msgl, msgblock->data, 0}};
 
     // Message Block 초기화
     memset(msgblock, 0x00, sizeof(MSG_BLOCK));

@@ -319,7 +319,7 @@ void signal_handler(int signo)
         break;
     }
 
-    fep_log(fep, FL_ERROR,
+    fep_log(fep, FL_MUST,
             "\n############################################################\n"
             "1) Error: %s\n"
             "2) Where:\n%s"
