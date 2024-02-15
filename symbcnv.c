@@ -3,11 +3,11 @@
 /*
  * Function: _conv_wcode()
  * ------------------------------
- * Week + Days = OPRA Weekly Code
+ * Week + Days = Weekly Code
  */
 int _conv_wcode(int week, int days)
 {
-    char opra_mcode[7][7] = {
+    char wcode[7][7] = {
         {0, 0, 0, 0, 0, 0, 0},
         {0, 'A', 'B', 'C', 'D', 'E', 0}, // 1 weekly
         {0, 'F', 'G', 'H', 'I', 'J', 0}, // 2 weekly
@@ -19,23 +19,23 @@ int _conv_wcode(int week, int days)
     if (week > 6 || days > 6)
         return (-1);
 
-    return (opra_mcode[week][days]);
+    return (wcode[week][days]);
 }
 
 /*
  * Function: _conv_mcode()
  * ----------------------------
- * Month = OPRA Monthly Code
+ * Month = Monthly Code
  */
 int _conv_mcode(int month)
 {
-    char fut_month[] = {
+    char mcode[] = {
         'F', 'G', 'H', 'J', 'K', 'M', 'N', 'Q', 'U', 'V', 'X', 'Z', 0, 0};
 
     if (month < 1 || month > 12)
         return (-1);
 
-    return (fut_month[month - 1]);
+    return (mcode[month - 1]);
 }
 
 /*
@@ -45,8 +45,7 @@ int _conv_mcode(int month)
  */
 int _convert_symbol(FEP *fep, char *corise_symbol, InstrumentLocate *inst)
 {
-    int year, month, mday, week;
-    char expd[256];
+    int year, month, mday, wday, week;
     char wcod, mcod;
 
     memset(corise_symbol, 0x00, SYMB_LEN);
@@ -55,13 +54,13 @@ int _convert_symbol(FEP *fep, char *corise_symbol, InstrumentLocate *inst)
     year = YEAR(inst->expiration_date) % 100; // 24
     month = MONTH(inst->expiration_date);     // 02
     mday = MDAY(inst->expiration_date);       // 14
+    wday = getwday(inst->expiration_date);
 
     // Get week info
-    sprintf(expd, "%lu", inst->expiration_date);
-    week = getweek(expd);
+    week = getweek((int)inst->expiration_date);
 
     // Get Weekly Code
-    wcod = _conv_wcode(week, mday);
+    wcod = _conv_wcode(week, wday);
 
     if (wcod <= 0)
         return (-1);
@@ -73,7 +72,7 @@ int _convert_symbol(FEP *fep, char *corise_symbol, InstrumentLocate *inst)
         return (-1);
 
     // Make corise symbol
-    sprintf(corise_symbol, "%c%s%c%d %c%.*f", wcod, inst->root, inst->mcode, year % 10, inst->put_or_call[0], inst->strike.denominator, inst->strike.value);
+    sprintf(corise_symbol, "%c%s%c%d %c%.*f", wcod, inst->root, mcod, year % 10, inst->put_or_call[0], (int)inst->strike.denominator, inst->strike.value);
 
     return (0);
 }

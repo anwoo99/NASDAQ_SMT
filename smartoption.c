@@ -233,7 +233,7 @@ int get_append_numeric(AppendHeader *header, char *msgb, int64_t *valueInt, uint
 
 int get_append_date(AppendHeader *header, char *msgb, uint64_t *date)
 {
-    uint64_t month, day, year;
+    uint64_t month, mday, year;
     int offset = 0;
 
     if (header->format_code != DATE_FORMAT_CODE)
@@ -244,23 +244,18 @@ int get_append_date(AppendHeader *header, char *msgb, uint64_t *date)
     convert_big_endian_to_uint64_t(&msgb[offset], &month, month_size);
     offset += month_size;
 
-    // 2. Day
-    int day_size = 1;
-    convert_big_endian_to_uint64_t(&msgb[offset], &day, day_size);
-    offset += day_size;
+    // 2. MDay
+    int mday_size = 1;
+    convert_big_endian_to_uint64_t(&msgb[offset], &mday, mday_size);
+    offset += mday_size;
 
     // 3. Year
     int year_size = 2;
     convert_big_endian_to_uint64_t(&msgb[offset], &year, year_size);
     offset += year_size;
 
-    // Make DATE Value
-    time_t current = time(NULL);
-    struct tm _tm;
-
-    localtime_r(&current, &_tm);
-
-    *date = (_tm.tm_year / 100 + year) * 10000 + month * 100 + day;
+    // Make Date
+    *date = YMD(year, month, mday);
 
     return (0);
 }

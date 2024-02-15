@@ -457,8 +457,8 @@ int smt_0x33(SMARTOPTION_TABLE *smt_table);
 void convert_big_endian_to_uint64_t(char *from, uint64_t *to, size_t size);
 void convert_big_endian_to_int64_t(char *from, int64_t *to, size_t size);
 void convert_nanosec_to_time_t(uint64_t *from, time_t *to);
-int getweek(char *date);
-int getdays(char *date);
+int getweek(int date);
+int getwday(int date);
 
 // Message Buffer
 int read_msg_buff(MSGBUFF *msgbuff, FIXEDFLD *fixedfld);
@@ -488,6 +488,6 @@ int parser_moldudp64_message_block(MSGBUFF *msgbuff, MSG_BLOCK *msgblock);
 /*************/
 /* symbcnv.c */
 /*************/
-int _convert_symbol(FEP *fep, char *corise_symbol, InstrumentLocate *inst)
+int _convert_symbol(FEP *fep, char *corise_symbol, InstrumentLocate *inst);
 
 #endif

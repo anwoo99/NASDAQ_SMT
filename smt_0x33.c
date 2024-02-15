@@ -4,7 +4,10 @@ static int _smt_equity(FEP *fep, TOKEN *token, SMARTOPTION_TABLE *smt_table);
 static int _smt_root(FEP *fep, TOKEN *token, SMARTOPTION_TABLE *smt_table);
 static int _smt_option(FEP *fep, TOKEN *token, SMARTOPTION_TABLE *smt_table);
 
-static FOLDER *_init_symbol(FEP *fep, char *symbol);
+static FOLDER *_init_symbol(FEP *fep, InstrumentLocate *inst);
+
+static char day_orth[32][3] = {"st", "nd", "rd", "th", "th", "th", "th", "th", "th", "th", "th", "th", "th", "th", "th", "th", "th", "th", "th", "th", "st", "nd", "rd", "th", "th", "th", "th", "th", "th", "th", "st", ""};
+static char month_str[13][4] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", ""};
 
 int smt_0x33(SMARTOPTION_TABLE *smt_table)
 {
@@ -51,6 +54,7 @@ static int _smt_equity(FEP *fep, TOKEN *token, SMARTOPTION_TABLE *smt_table)
 
     // Instrument Locate 등록
     createInst(smt_table);
+
     return (0);
 }
 
@@ -78,6 +82,8 @@ static int _smt_option(FEP *fep, TOKEN *token, SMARTOPTION_TABLE *smt_table)
     InstrumentLocate *parent;
     FOLDER *folder;
     MDMSTR *mstr, t_mstr;
+    SYMBOL *symbol;
+    int year, month, mday;
     char check[8];
 
     if (fep->xchg->type != OPTION)
@@ -90,13 +96,24 @@ static int _smt_option(FEP *fep, TOKEN *token, SMARTOPTION_TABLE *smt_table)
         return (-1);
     }
 
+    // Parent Locate 정보 가져오기
+    parent = findParent(smt_table, EQUITY_PRODUCT);
+
+    // Parnet Locate의 Symbol을 토대로 XXXX-symb.csv 파일 정보 가져오기
+    symbol = fep_symbget(fep, parent->symbol);
+
     // 만기일 확인 후 월물 제한
     /*
      *
      */
 
-    // Symbol 등록
+    // Symbol 등록(Nasdaq 측 소수점자리수가 너무 큼 - 수동 설정)
+    inst->strike.denominator = symbol->zdiv;
     folder = _init_symbol(fep, inst);
+
+    if (folder == NULL)
+        return (-1);
+
     mstr = &folder->mstr;
 
     // Master 정보가 바뀐 것이 있는지 확인하고자 temp용 변수 생성
@@ -105,8 +122,14 @@ static int _smt_option(FEP *fep, TOKEN *token, SMARTOPTION_TABLE *smt_table)
     // Locate Code 등록
     sprintf(mstr->scid, "%lu", inst->locate_code);
 
+    // Root 등록
+    strcpy(mstr->root, inst->root);
+
+    // Clearing Symbol
+    strcpy(mstr->clrs, symbol->csym);
+
     // Currency Code 등록
-    sprintf(mstr->curr[0], "%s", inst->currency_code);
+    sprintf(mstr->curr[0], "%s", parent->currency_code);
 
     // Product Type
     mstr->styp = (int)inst->msgtype;
@@ -116,20 +139,49 @@ static int _smt_option(FEP *fep, TOKEN *token, SMARTOPTION_TABLE *smt_table)
 
     // Expiration Date
     mstr->zymd = (uint32_t)inst->expiration_date;
+    year = YEAR(mstr->zymd);
+    month = MONTH(mstr->zymd);
+    mday = MDAY(mstr->zymd);
 
     // Strike Price
     mstr->strk = inst->strike.value;
 
     // Decimal Denominator
-    mstr->zdiv = (int)inst->strike.denominator;
+    mstr->zdiv = symbol->zdiv;
+
+    // Price Increment
+    mstr->pinc = pow(0.1, mstr->zdiv);
 
     // Short Exchange Name(MIC)
-    strcpy(mstr->exnm, inst->MIC);
+    strcpy(mstr->exnm, parent->MIC);
 
     // Underlying Symbol and Locate Code(finding Equity)
-    parent = findParent(smt_table, EQUITY_PRODUCT);
     sprintf(mstr->unid, "%lu", parent->locate_code);
     sprintf(mstr->unps, "%.31s", parent->symbol);
+
+    // Set ECYM
+    sprintf(mstr->ecym, "%d%s %s'%d", mday, day_orth[mday - 1], month_str[month - 1], year % 100);
+
+    // Set ENAM
+    sprintf(mstr->enam, "%s %s %c%.*f", symbol->enam, mstr->ecym, inst->put_or_call[0], mstr->zdiv, inst->strike.value);
+
+    // Set session time
+    mstr->session.frhm = symbol->session.frhm; // trading hour
+    mstr->session.tohm = symbol->session.tohm; // trading hour
+    mstr->session.fwdy = symbol->session.fwdy; // trading start day of week
+    mstr->session.twdy = symbol->session.twdy; // trading end day of week
+    mstr->session.hfhm = symbol->session.hfhm; // trading halt time
+    mstr->session.hthm = symbol->session.hthm; // trading halt time
+
+    if (mstr->session.fwdy == 0 || mstr->session.twdy == 0)
+    {
+        mstr->session.fwdy = 1; // Monday
+        mstr->session.twdy = 5; // Friday
+    }
+
+    // Feed Number
+    if (atoi(symbol->feed) > 0)
+        mstr->feed = atoi(symbol->feed);
 
     if (memcmp(&t_mstr, mstr, sizeof(MDMSTR)) != 0)
     {
@@ -161,10 +213,10 @@ static FOLDER *_init_symbol(FEP *fep, InstrumentLocate *inst)
     if (folder != NULL)
     {
         /* 만일 기존 폴더에 저장된 Symbol과 다를 경우 품목 중복임을 알림 */
-        if (strcmp(folder->code, local_symbol) != 0)
+        if (strcmp(folder->mstr.code, local_symbol) != 0)
         {
-            fep_log(fep, FL_PROGRESS, "Symbol Mismatch(%s)! folder[%s] <-> current[%s]", corise_symbol, folder->code, local_symbol);
-            retrun(NULL);
+            fep_log(fep, FL_PROGRESS, "Symbol Mismatch(%s)! folder[%s] <-> current[%s]", corise_symbol, folder->mstr.code, local_symbol);
+            return (NULL);
         }
 
         return (folder);

@@ -63,70 +63,83 @@ void convert_nanosec_to_time_t(uint64_t *from, time_t *to)
     *to = mktime(&easternTime);
 }
 
-int getweek(char *date)
+/*
+ * Function: getweek()
+ * -----------------------------
+ * Date(20240214) -> week number
+ */
+int getweek(int date)
 {
     int week = 0;
-    int year, month, day, sat;
+    int year, month, mday, sat;
     time_t clock;
     struct tm *tm, time_c;
-    char f_date[8 + 1];
+    int day_7 = 7;
 
-    year = str2int(&date[0], 2) + 2000;
-    month = option_month_code(date[2]);
-    day = str2int(&date[3], 2);
+    // Parse the expiration date to y/m/d(ex.20240214)
+    year = YEAR(date);   // 24
+    month = MONTH(date); // 02
+    mday = MDAY(date);   // 14
 
-    sprintf(f_date, "%04d%02d01", year, month);
+    // Make struct tm variable
     memset(&time_c, 0, sizeof(struct tm));
-    time_c.tm_year = str2int(&f_date[0], 4) - 1900;
-    time_c.tm_mon = str2int(&f_date[4], 2) - 1;
-    time_c.tm_mday = str2int(&f_date[6], 2);
 
+    time_c.tm_year = year - 1900;
+    time_c.tm_mon = month - 1;
+    time_c.tm_mday = 1;
+
+    // Convert to time_t
     clock = mktime(&time_c);
+
+    // Calculate Saturday of the first week
     tm = localtime(&clock);
     sat = 7 - tm->tm_wday;
-    if (sat == 1) // 그달 1일이 토요일부터 시작하면, 다움주를 첫주로 계산한다
+    if (sat == 1) // 그달 1일이 토요일부터 시작하면, 다음주를 첫주로 계산한다
         sat += 7;
 
-    if (day < 1 || day > 31)
-        return (0);
-    if (month < 1 || month > 12)
-        return (0);
+    // Validate input date
+    if (mday < 1 || mday > 31 || month < 1 || month > 12)
+        return 0;
 
-    if (day <= sat)
+    if (mday <= sat)
         week = 1;
-    else if (day <= sat + 7)
+    else if (mday <= sat + day_7)
         week = 2;
-    else if (day <= sat + 7 + 7)
+    else if (mday <= sat + (day_7 * 2))
         week = 3;
-    else if (day <= sat + 7 + 7 + 7)
+    else if (mday <= sat + (day_7 * 3))
         week = 4;
-    else if (day <= sat + 7 + 7 + 7 + 7)
+    else if (mday <= sat + (day_7 * 4))
         week = 5;
 
     return week;
 }
 
-int getdays(char *date)
+int getwday(int date)
 {
-    int days = 0;
-    int year, month, day;
+    int year, month, mday;
     time_t clock;
     struct tm *tm, time_c;
 
-    year = str2int(&date[0], 2) + 2000;
-    month = option_month_code(date[2]);
-    day = str2int(&date[3], 2);
+    // Parse the expiration date to y/m/d(ex.20240214)
+    year = YEAR(date);   // 24
+    month = MONTH(date); // 02
+    mday = MDAY(date);   // 14
 
+    // Make struct tm variable
     memset(&time_c, 0, sizeof(struct tm));
+
     time_c.tm_year = year - 1900;
     time_c.tm_mon = month - 1;
-    time_c.tm_mday = day;
+    time_c.tm_mday = mday;
 
+    // Convert to time_t
     clock = mktime(&time_c);
-    tm = localtime(&clock);
-    days = tm->tm_wday;
 
-    return days;
+    // Convert to localtime
+    tm = localtime(&clock);
+    
+    return (tm->tm_wday);
 }
 
 /********************************/
