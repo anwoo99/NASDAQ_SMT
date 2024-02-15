@@ -140,7 +140,7 @@ InstrumentLocate *updateInst(SMARTOPTION_TABLE *smt_table)
     FEP *fep = smt_table->fep;
     SHM_SMART *shm_smart = (SHM_SMART *)fep->bit;
     InstrumentLocate *smt_inst = &smt_table->instrument_locate;
-    InstrumentLocate *retv, inst;
+    InstrumentLocate *retv;
 
     // Instrument Locate Code가 존재하지 않으면 생성
     if ((retv = readInst(smt_table, smt_inst->locate_code)) == NULL)
@@ -149,17 +149,13 @@ InstrumentLocate *updateInst(SMARTOPTION_TABLE *smt_table)
     // Set bit
     setbit(shm_smart->bit, smt_inst->locate_code);
 
-    // instrument Locate 업데이트
+    // Channel Seconds 업데이트
     memcpy(retv, smt_inst, sizeof(InstrumentLocate));
-
-    // 결과값 복사
-    memset(inst, 0x00, sizeof(InstrumentLocate));
-    memcpy(inst, retv, sizeof(InstrumentLocate));
 
     // bsearch를 위한 qsort
     qsort(shm_smart->inst_list, *shm_smart->inst_size, sizeof(InstrumentLocate), cmplocate);
 
-    return (inst);
+    return (smt_inst);
 }
 
 /*
@@ -247,10 +243,12 @@ ChannelSeconds *createCs(SMARTOPTION_TABLE *smt_table)
     qsort(shm_smart->cs_list, *shm_smart->cs_size, sizeof(ChannelSeconds), cmpcs);
 
     fep_log(fep, FL_PROGRESS, "Channel Seconds Added. Protocl ID(%lu) Channel Index(%lu) Current Size:%d", smt_cs->protocol_id, smt_cs->channel_index, *shm_smart->cs_size);
+
+    return(smt_cs);
 }
 
 /*
- * Function: createCs()
+ * Function: readCs()
  * ---------------------------------------
  * 공유메모리 내 Channel Seconds 정보 읽기
  */
@@ -279,7 +277,7 @@ ChannelSeconds *updateCs(SMARTOPTION_TABLE *smt_table)
     FEP *fep = smt_table->fep;
     SHM_SMART *shm_smart = (SHM_SMART *)fep->bit;
     ChannelSeconds *smt_cs = &smt_table->channel_seconds;
-    ChannelSeconds *retv, cs;
+    ChannelSeconds *retv;
 
     // Channel Seconds가 존재하지 않으면 리턴
     if ((retv = readCs(smt_table, smt_cs->protocol_id, smt_cs->channel_index)) == NULL)
@@ -288,16 +286,12 @@ ChannelSeconds *updateCs(SMARTOPTION_TABLE *smt_table)
     // Channel Seconds 업데이트
     memcpy(retv, smt_cs, sizeof(ChannelSeconds));
 
-    // 결과값 복사
-    memset(cs, 0x00, sizeof(ChannelSeconds));
-    memcpy(cs, retv, sizeof(ChannelSeconds));
-
     // bsearch를 위한 qsort
     qsort(shm_smart->cs_list, *shm_smart->cs_size, sizeof(ChannelSeconds), cmpcs);
 
-    fep_log(fep, FL_DEBUG, "Channel Seconds Update! Protocol ID:%lu Channel Index: %lu Seconds:%lu", cs.protocol_id, cs.channel_index, cs.seconds);
+    fep_log(fep, FL_DEBUG, "Channel Seconds Update! Protocl ID(%lu) Channel Index(%lu) Seconds(%lu)", smt_cs->protocol_id, smt_cs->channel_index, smt_cs->seconds);
 
-    return (cs);
+    return (smt_cs);
 }
 
 /*
