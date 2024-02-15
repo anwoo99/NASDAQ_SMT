@@ -142,7 +142,6 @@ int _smt_csv(SMARTOPTION_TABLE *smt_table, FIXEDFLD *fixedfld)
             break;
         case FIXEDFLD_BITMASK:
             sprintf(&smt_table->logmsg[msg_l], "0x%0*lX,", *(int *)(fixedfld[ii].field_length) * 2, *((uint64_t *)(fixedfld[ii].value)));
-
             break;
         default:
             strcpy(&smt_table->logmsg[msg_l], ",");

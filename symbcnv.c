@@ -1,6 +1,11 @@
 #include "nassmt.h"
 
-int _conv_opra_mcode(int week, int days)
+/*
+ * Function: _conv_wcode()
+ * ------------------------------
+ * Week + Days = OPRA Weekly Code
+ */
+int _conv_wcode(int week, int days)
 {
     char opra_mcode[7][7] = {
         {0, 0, 0, 0, 0, 0, 0},
@@ -17,11 +22,32 @@ int _conv_opra_mcode(int week, int days)
     return (opra_mcode[week][days]);
 }
 
+/*
+ * Function: _conv_mcode()
+ * ----------------------------
+ * Month = OPRA Monthly Code
+ */
+int _conv_mcode(int month)
+{
+    char fut_month[] = {
+        'F', 'G', 'H', 'J', 'K', 'M', 'N', 'Q', 'U', 'V', 'X', 'Z', 0, 0};
+
+    if (month < 1 || month > 12)
+        return (-1);
+
+    return (fut_month[month - 1]);
+}
+
+/*
+ * Function: _conv_opra_wcode()
+ * ------------------------------
+ * NASDAQ Ticker -> Corise Ticker
+ */
 int _convert_symbol(FEP *fep, char *corise_symbol, InstrumentLocate *inst)
 {
     int year, month, mday, week;
     char expd[256];
-    char mcod;
+    char wcod, mcod;
 
     memset(corise_symbol, 0x00, SYMB_LEN);
 
@@ -34,13 +60,20 @@ int _convert_symbol(FEP *fep, char *corise_symbol, InstrumentLocate *inst)
     sprintf(expd, "%lu", inst->expiration_date);
     week = getweek(expd);
 
-    // Get OPRA Month Code
-    mcod = _conv_opra_mcode(week, mday);
+    // Get Weekly Code
+    wcod = _conv_wcode(week, mday);
 
-    // Remove the zeros of strike price not needed
+    if (wcod <= 0)
+        return (-1);
+
+    // Get Monthly Code
+    mcod = _conv_mcode(month);
+
+    if (mcod <= 0)
+        return (-1);
 
     // Make corise symbol
-    sprintf(corise_symbol, "%s%c")
+    sprintf(corise_symbol, "%c%s%c%d %c%.*f", wcod, inst->root, inst->mcode, year % 10, inst->put_or_call[0], inst->strike.denominator, inst->strike.value);
 
     return (0);
 }

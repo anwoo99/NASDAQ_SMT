@@ -151,16 +151,27 @@ static FOLDER *_init_symbol(FEP *fep, InstrumentLocate *inst)
     char corise_symbol[SYMB_LEN], local_symbol[SYMB_LEN];
 
     strcpy(local_symbol, inst->symbol);
-    _convert_symbol(fep, corise_symbol, inst);
+
+    if (_convert_symbol(fep, corise_symbol, inst) == -1)
+        return (NULL);
 
     /* 이미 해당 symbol에 관한 Folder가 존재하는지 확인 */
-    folder = getfolder(fep, local_symbol);
+    folder = getfolder(fep, corise_symbol);
 
     if (folder != NULL)
+    {
+        /* 만일 기존 폴더에 저장된 Symbol과 다를 경우 품목 중복임을 알림 */
+        if (strcmp(folder->code, local_symbol) != 0)
+        {
+            fep_log(fep, FL_PROGRESS, "Symbol Mismatch(%s)! folder[%s] <-> current[%s]", corise_symbol, folder->code, local_symbol);
+            retrun(NULL);
+        }
+
         return (folder);
+    }
 
     /* Folder가 없다면 새로운 폴더 생성 */
-    folder = newfolder(fep, local_symbol);
+    folder = newfolder(fep, corise_symbol);
 
     if (folder == NULL)
         return (NULL);
