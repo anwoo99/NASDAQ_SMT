@@ -2,6 +2,7 @@
 
 static int cmplocate(const void *a, const void *b);
 static int cmpcs(const void *a, const void *b);
+static int cmpmcl(const void *a, const void *b);
 
 /*
  * Function: initsmt()
@@ -17,7 +18,7 @@ int initsmt(FEP *fep, int key, int clr)
     int offset = 0;
     struct shmid_ds shminfo;
 
-    shmsz = (INT_MAX / 8 + 16) + sizeof(int) + (sizeof(InstrumentLocate) * fep->xchg->room) + sizeof(int) + (sizeof(ChannelSeconds) * MAX_CHANNEL);
+    shmsz = (INT_MAX / 8 + 16) + sizeof(int) + (sizeof(InstrumentLocate) * fep->xchg->room) + sizeof(int) + (sizeof(ChannelSeconds) * MAX_CHANNEL) + (sizeof(MarketCenterLocate) * MAX_MARKET_CENTER);
 
     if ((shmid = shmget(key, 0, 0666)) < 0)
     {
@@ -54,9 +55,17 @@ int initsmt(FEP *fep, int key, int clr)
     offset += (sizeof(InstrumentLocate) * fep->xchg->room);
     shm_smart->cs_size = (int *)(shmad + offset);
 
-    // 4) cs_list
+    // 5) cs_list
     offset += sizeof(int);
     shm_smart->cs_list = (ChannelSeconds *)(shmad + offset);
+
+    // 6) mcl_size
+    offset += (sizeof(ChannelSeconds) * MAX_CHANNEL);
+    shm_smart->mcl_size = (int *)(shmad + offset);
+
+    // 7) mc_list
+    offset += sizeof(int);
+    shm_smart->mcl_list = (ChannelSeconds *)(shmad + offset);
 
     fep->bit = shm_smart;
 
@@ -91,6 +100,13 @@ InstrumentLocate *createInst(SMARTOPTION_TABLE *smt_table)
     // Instrument Locate Code가 이미 존재하면 해당 정보 리턴
     if ((retv = readInst(smt_table, smt_inst->locate_code)) != NULL)
         return (retv);
+
+    // Max Size 넘으면 리턴
+    if (*shm_smart->inst_size >= fep->xchg->room)
+    {
+        fep_log(fep, FL_PROGRESS, "Failed to add instrument locate");
+        return (NULL);
+    }
 
     // Set bit
     setbit(shm_smart->bit, smt_inst->locate_code);
@@ -235,6 +251,12 @@ ChannelSeconds *createCs(SMARTOPTION_TABLE *smt_table)
     if ((retv = readCs(smt_table, smt_cs->protocol_id, smt_cs->channel_index)) != NULL)
         return (retv);
 
+    if (*shm_smart->cs_size >= MAX_CHANNEL)
+    {
+        fep_log(fep, FL_PROGRESS, "Failed to add channel seconds");
+        return (NULL);
+    }
+
     // Instrument Locate 정보 등록
     memcpy(&shm_smart->cs_list[*shm_smart->cs_size], smt_cs, sizeof(ChannelSeconds));
     *shm_smart->cs_size += 1;
@@ -244,7 +266,7 @@ ChannelSeconds *createCs(SMARTOPTION_TABLE *smt_table)
 
     fep_log(fep, FL_PROGRESS, "Channel Seconds Added. Protocl ID(%lu) Channel Index(%lu) Current Size:%d", smt_cs->protocol_id, smt_cs->channel_index, *shm_smart->cs_size);
 
-    return(smt_cs);
+    return (smt_cs);
 }
 
 /*
@@ -328,6 +350,121 @@ int deleteCs(SMARTOPTION_TABLE *smt_table, uint64_t protocol_id, uint64_t channe
     return (0);
 }
 
+/*
+ * Function: createMcl()
+ * ---------------------------------------
+ * smt_table 내 Market Center Locate 정보
+ * 공유메모리 등록
+ */
+MarketCenterLocate *createMcl(SMARTOPTION_TABLE *smt_table)
+{
+    FEP *fep = smt_table->fep;
+    SHM_SMART *shm_smart = (SHM_SMART *)fep->bit;
+    MarketCenterLocate *smt_mcl = &smt_table->market_center_locate;
+    MarketCenterLocate *retv;
+
+    // Market Center Locate 가 이미 존재하면 해당 정보 리턴
+    if ((retv = readMcl(smt_table, smt_mcl->locate_code)) != NULL)
+        return (retv);
+
+    if (*shm_smart->mcl_size >= MAX_MARKET_CENTER)
+    {
+        fep_log(fep, FL_PROGRESS, "Failed to add market center locate");
+        return (NULL);
+    }
+
+    // Cha
+    memcpy(&shm_smart->mcl_list[*shm_smart->mcl_size], smt_mcl, sizeof(MarketCenterLocate));
+    *shm_smart->mcl_size += 1;
+
+    // bsearch를 위한 qsort(locate code)
+    qsort(shm_smart->mcl_list, *shm_smart->mcl_size, sizeof(MarketCenterLocate), cmpmcl);
+
+    fep_log(fep, FL_PROGRESS, "Market Center Locate Added. Locate Code(%lu) MIC(%s) Current Size:%d", smt_mcl->locate_code, smt_mcl->MIC, *shm_smart->mcl_size);
+
+    return (smt_mcl);
+}
+
+/*
+ * Function: readMcl()
+ * ------------------------------------------
+ * 공유메모리 내 Market Center Locate 정보 읽기
+ */
+MarketCenterLocate *readMcl(SMARTOPTION_TABLE *smt_table, uint64_t locate_code)
+{
+    FEP *fep = smt_table->fep;
+    SHM_SMART *shm_smart = (SHM_SMART *)fep->bit;
+    MarketCenterLocate key, *retv;
+
+    // 인자값에 해당하는 데이터 찾기
+    key.locate_code = locate_code;
+    retv = bsearch(&key, shm_smart->mcl_list, *shm_smart->mcl_size, sizeof(MarketCenterLocate), cmpmcl);
+
+    return (retv);
+}
+
+/*
+ * Function: updateMcl()
+ * ----------------------------------
+ * smt_table내 Market Center Locate 정보
+ * 공유메모리 업데이트
+ */
+MarketCenterLocate *updateMcl(SMARTOPTION_TABLE *smt_table)
+{
+    FEP *fep = smt_table->fep;
+    SHM_SMART *shm_smart = (SHM_SMART *)fep->bit;
+    MarketCenterLocate *smt_mcl = &smt_table->market_center_locate;
+    MarketCenterLocate *retv;
+
+    // Market Center Locate 가 존재하지 않으면 생성 후 리턴
+    if ((retv = readMcl(smt_table, smt_mcl->locate_code)) == NULL)
+        return (createMcl(smt_table));
+
+    // Market Center Locate 업데이트
+    memcpy(retv, smt_mcl, sizeof(MarketCenterLocate));
+
+    // bsearch를 위한 qsort
+    qsort(shm_smart->mcl_list, *shm_smart->mcl_size, sizeof(MarketCenterLocate), cmpmcl);
+
+    fep_log(fep, FL_DEBUG, "Market Center Locate Update! Locate Code(%lu) MIC(%lu)", smt_mcl->locate_code, smt_mcl->MIC);
+
+    return (smt_mcl);
+}
+
+/*
+ * Function: deleteMcl()
+ * -----------------------------------------
+ * Market Center Locate 정보 삭제
+ */
+int deleteMcl(SMARTOPTION_TABLE *smt_table, uint64_t locate_code)
+{
+    FEP *fep = smt_table->fep;
+    SHM_SMART *shm_smart = (SHM_SMART *)fep->bit;
+    MarketCenterLocate *retv;
+    char *from, *to;
+    int index, size;
+
+    // Instrument Locate Code가 존재하지 않으면 리턴
+    if ((retv = readMcl(smt_table, locate_code)) == NULL)
+        return (0);
+
+    // Delete
+    index = (int)(((unsigned long)retv - (unsigned long)shm_smart->mcl_list) / sizeof(MarketCenterLocate));
+    size = (*shm_smart->mcl_size - index - 1) * sizeof(MarketCenterLocate);
+
+    from = (char *)&retv[1];
+    to = (char *)&retv[0];
+
+    memmove(to, from, size);
+
+    *shm_smart->mcl_size -= 1;
+
+    // bsearch를 위한 qsort
+    qsort(shm_smart->mcl_list, *shm_smart->mcl_size, sizeof(ChannelSeconds), cmpmcl);
+
+    return (0);
+}
+
 static int cmplocate(const void *a, const void *b)
 {
     InstrumentLocate *s1 = (InstrumentLocate *)a;
@@ -359,4 +496,17 @@ static int cmpcs(const void *a, const void *b)
         else
             return 0;
     }
+}
+
+static int cmpmcl(const void *a, const void *b)
+{
+    MarketCenterLocate *s1 = (MarketCenterLocate *)a;
+    MarketCenterLocate *s2 = (MarketCenterLocate *)b;
+
+    if (s1->locate_code > s2->locate_code)
+        return 1;
+    else if (s1->locate_code < s2->locate_code)
+        return -1;
+    else
+        return 0;
 }

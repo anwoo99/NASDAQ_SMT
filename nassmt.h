@@ -423,8 +423,8 @@ typedef struct smartoption_table
 /***********************************/
 /* Instrument Locate shared memory */
 /***********************************/
-#define MAX_CHANNEL 100
-
+#define MAX_CHANNEL 1024
+#define MAX_MARKET_CENTER 5000
 typedef struct
 {
     unsigned char *bit;
@@ -432,6 +432,8 @@ typedef struct
     InstrumentLocate *inst_list;
     int *cs_size;
     ChannelSeconds *cs_list;
+    int *mcl_size;
+    MarketCenterLocate *mcl_list;
 } SHM_SMART;
 
 /*****************/
@@ -454,6 +456,12 @@ ChannelSeconds *createCs(SMARTOPTION_TABLE *smt_table);
 ChannelSeconds *readCs(SMARTOPTION_TABLE *smt_table, uint64_t protocol_id, uint64_t channel_index);
 ChannelSeconds *updateCs(SMARTOPTION_TABLE *smt_table);
 int deleteCs(SMARTOPTION_TABLE *smt_table, uint64_t protocol_id, uint64_t channel_index);
+
+MarketCenterLocate *createMcl(SMARTOPTION_TABLE *smt_table);
+MarketCenterLocate *readMcl(SMARTOPTION_TABLE *smt_table, uint64_t locate_code);
+MarketCenterLocate *updateMcl(SMARTOPTION_TABLE *smt_table);
+int deleteMcl(SMARTOPTION_TABLE *smt_table, uint64_t locate_code);
+
 
 /****************/
 /* smt function */

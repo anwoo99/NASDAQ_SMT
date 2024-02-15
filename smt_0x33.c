@@ -155,6 +155,9 @@ static int _smt_option(FEP *fep, TOKEN *token, SMARTOPTION_TABLE *smt_table)
     // Short Exchange Name(MIC)
     strcpy(mstr->exnm, parent->MIC);
 
+    // Exchange ID
+    mstr->exid = fep->exid;
+
     // Underlying Symbol and Locate Code(finding Equity)
     sprintf(mstr->unid, "%lu", parent->locate_code);
     sprintf(mstr->unps, "%.31s", parent->symbol);
