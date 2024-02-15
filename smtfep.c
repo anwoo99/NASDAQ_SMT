@@ -54,7 +54,7 @@ int main(int argc, char **argv)
     signal(SIGQUIT, stopit);
     signal(SIGTERM, stopit);
 
-    initInst(fep, IPCK(fep->xchg->ipck, COOKER, 1), 0);
+    initsmt(fep, IPCK(fep->xchg->ipck, COOKER, 1), 0);
 
     fep_init(fep, &procedure, 1);
     fep_close(fep);

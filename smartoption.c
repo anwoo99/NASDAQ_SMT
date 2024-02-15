@@ -685,6 +685,7 @@ int smt_decode(SMARTOPTION_TABLE *smt_table)
             {"Seconds", FIXEDFLD_UINT, &CHANNEL_SECONDS_SECONDS_LEN, (void *)&smt_table->channel_seconds.seconds, 0},
             {"", 0, NULL, NULL, -1}};
         smt_default_decode(smt_table, fixedfld, is_market);
+        smt_table->proc = smt_0x22;
         break;
     }
     case MARKET_CENTER_LOCATE_MSG_TYPE: // 0x30

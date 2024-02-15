@@ -53,7 +53,7 @@ static int _smt_equity(FEP *fep, TOKEN *token, SMARTOPTION_TABLE *smt_table)
     }
 
     // Instrument Locate 등록
-    createInst(smt_table);
+    updateInst(smt_table);
 
     return (0);
 }
@@ -71,7 +71,7 @@ static int _smt_root(FEP *fep, TOKEN *token, SMARTOPTION_TABLE *smt_table)
     }
 
     // Instrument Locate 등록
-    createInst(smt_table);
+    updateInst(smt_table);
 
     return (0);
 }

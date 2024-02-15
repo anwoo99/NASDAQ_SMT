@@ -423,32 +423,43 @@ typedef struct smartoption_table
 /***********************************/
 /* Instrument Locate shared memory */
 /***********************************/
+#define MAX_CHANNEL 100
+
 typedef struct
 {
     unsigned char *bit;
     int *inst_size;
     InstrumentLocate *inst_list;
-} SHM_INST;
+    int *cs_size;
+    ChannelSeconds *cs_list;
+} SHM_SMART;
 
 /*****************/
 /* smartoption.c */
 /*****************/
 int smt_decode(SMARTOPTION_TABLE *smt_table);
 
-/*****************/
-/* smtinst.c */
-/*****************/
-int initInst(FEP *fep, int key, int clr);
-int deleteInst(SMARTOPTION_TABLE *smt_table, uint64_t locate_code);
+/************/
+/* smtshm.c */
+/************/
+int initsmt(FEP *fep, int key, int clr);
+
 InstrumentLocate *createInst(SMARTOPTION_TABLE *smt_table);
 InstrumentLocate *updateInst(SMARTOPTION_TABLE *smt_table);
 InstrumentLocate *readInst(SMARTOPTION_TABLE *smt_table, uint64_t locate_code);
 InstrumentLocate *findParent(SMARTOPTION_TABLE *smt_table, uint64_t product_type);
+int deleteInst(SMARTOPTION_TABLE *smt_table, uint64_t locate_code);
 
-/**************/
-/* smt_0x33.c */
-/**************/
-int smt_0x33(SMARTOPTION_TABLE *smt_table);
+ChannelSeconds *createCs(SMARTOPTION_TABLE *smt_table);
+ChannelSeconds *readCs(SMARTOPTION_TABLE *smt_table, uint64_t protocol_id, uint64_t channel_index);
+ChannelSeconds *updateCs(SMARTOPTION_TABLE *smt_table);
+int deleteCs(SMARTOPTION_TABLE *smt_table, uint64_t protocol_id, uint64_t channel_index);
+
+/****************/
+/* smt function */
+/****************/
+int smt_0x22(SMARTOPTION_TABLE *smt_table); // Channel Seconds
+int smt_0x33(SMARTOPTION_TABLE *smt_table); // Instrument Locate
 
 /*************/
 /* smttool.c */
