@@ -699,6 +699,7 @@ int smt_decode(SMARTOPTION_TABLE *smt_table)
             {"MIC", FIXEDFLD_STRING, &MARKET_CENTER_LOCATE_MIC_LEN, (void *)&smt_table->market_center_locate.MIC, 0},
             {"", 0, NULL, NULL, -1}};
         smt_default_decode(smt_table, fixedfld, is_market);
+        smt_table->proc = smt_0x30;
         break;
     }
     case INSTRUMENT_LOCATE_MSG_TYPE: // 0x33

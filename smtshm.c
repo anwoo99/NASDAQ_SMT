@@ -65,7 +65,7 @@ int initsmt(FEP *fep, int key, int clr)
 
     // 7) mc_list
     offset += sizeof(int);
-    shm_smart->mcl_list = (ChannelSeconds *)(shmad + offset);
+    shm_smart->mcl_list = (MarketCenterLocate *)(shmad + offset);
 
     fep->bit = shm_smart;
 
@@ -373,7 +373,6 @@ MarketCenterLocate *createMcl(SMARTOPTION_TABLE *smt_table)
         return (NULL);
     }
 
-    // Cha
     memcpy(&shm_smart->mcl_list[*shm_smart->mcl_size], smt_mcl, sizeof(MarketCenterLocate));
     *shm_smart->mcl_size += 1;
 
