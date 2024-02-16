@@ -491,7 +491,7 @@ TRADE *createTrade(SMARTOPTION_TABLE *smt_table)
     TRADE *retv;
 
     // TRADE 가 이미 존재하면 해당 정보 리턴
-    if ((retv = readTrade(smt_table, smt_trade->locate_code, smt_trade->trade_id)) != NULL)
+    if ((retv = readTrade(smt_table, smt_trade->instrument_locate, smt_trade->trade_id)) != NULL)
         return (retv);
 
     if (*shm_smart->trade_size >= MAX_TRADE_ID)
@@ -506,7 +506,7 @@ TRADE *createTrade(SMARTOPTION_TABLE *smt_table)
     // bsearch를 위한 qsort(locate code)
     qsort(shm_smart->trade_list, *shm_smart->trade_size, sizeof(TRADE), cmptrade);
 
-    fep_log(fep, FL_DEBUG, "TRADE info added. ID(%lu) LOCATE(%lu)", smt_trade->trade_id, smt_trade->locate_code);
+    fep_log(fep, FL_DEBUG, "TRADE info added. ID(%lu) LOCATE(%lu)", smt_trade->trade_id, smt_trade->instrument_locate);
 
     return (smt_trade);
 }
@@ -523,7 +523,7 @@ TRADE *readTrade(SMARTOPTION_TABLE *smt_table, uint64_t locate_code, uint64_t tr
     TRADE key, *retv;
 
     // 인자값에 해당하는 데이터 찾기
-    key.locate_code = locate_code;
+    key.instrument_locate = locate_code;
     key.trade_id = trade_id;
     retv = bsearch(&key, shm_smart->trade_list, *shm_smart->trade_size, sizeof(TRADE), cmptrade);
 
@@ -544,8 +544,8 @@ TRADE *updateTrade(SMARTOPTION_TABLE *smt_table)
     TRADE *retv;
 
     // Trade가 존재하지 않으면 생성 후 리턴
-    if ((retv = readTrade(smt_table, smt_trade->locate_code, smt_trade->trade_id)) == NULL)
-        return (readTrade(smt_table));
+    if ((retv = readTrade(smt_table, smt_trade->instrument_locate, smt_trade->trade_id)) == NULL)
+        return (createTrade(smt_table));
 
     // Trade 업데이트
     memcpy(retv, smt_trade, sizeof(TRADE));
@@ -641,9 +641,9 @@ static int cmptrade(const void *a, const void *b)
     TRADE *s1 = (TRADE *)a;
     TRADE *s2 = (TRADE *)b;
 
-    if (s1->locate_code > s2->locate_code)
+    if (s1->instrument_locate > s2->instrument_locate)
         return 1;
-    else if (s1->locate_code < s2->locate_code)
+    else if (s1->instrument_locate < s2->instrument_locate)
         return -1;
     else
     {

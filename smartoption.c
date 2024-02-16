@@ -786,6 +786,7 @@ int smt_decode(SMARTOPTION_TABLE *smt_table)
         smt_table->loglevel = FL_PROGRESS;
         smt_table->logflag = 0;
         smt_trade_decode(smt_table);
+        smt_table->proc = smt_trade;
         break;
     }
     case LONG_TRADE_MSG_TYPE: // 0x71
@@ -794,6 +795,7 @@ int smt_decode(SMARTOPTION_TABLE *smt_table)
         smt_table->loglevel = FL_PROGRESS;
         smt_table->logflag = 0;
         smt_trade_decode(smt_table);
+        smt_table->proc = smt_trade;
         break;
     }
     case EXTENDED_TRADE_MSG_TYPE: // 0x72
@@ -802,6 +804,7 @@ int smt_decode(SMARTOPTION_TABLE *smt_table)
         smt_table->loglevel = FL_PROGRESS;
         smt_table->logflag = 0;
         smt_trade_decode(smt_table);
+        smt_table->proc = smt_trade;
         break;
     }
     case TRADE_CANCEL_MSG_TYPE: // 0x73
@@ -810,6 +813,7 @@ int smt_decode(SMARTOPTION_TABLE *smt_table)
         smt_table->loglevel = FL_PROGRESS;
         smt_table->logflag = 0;
         smt_trade_decode(smt_table);
+        smt_table->proc = smt_trade;
         break;
     }
     case VALUE_UPDATE_MSG_TYPE: // 0x80

@@ -71,8 +71,11 @@ MDFOLD *smtfold(FEP *fep, uint64_t locate_code)
 {
     MDFOLD *folder;
     char symbol[MAX_SYMB_LEN];
+    char search[128];
 
-    if (fep_scid2symb(fep, locate_code, symbol) != 0)
+    sprintf(search, "%lu", locate_code);
+
+    if (fep_scid2symb(fep, search, symbol) != 0)
         return (NULL);
 
     folder = getfolder(fep, symbol);

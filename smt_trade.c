@@ -26,12 +26,15 @@ static int _smt_trade_trade(FEP *fep, TOKEN *token, SMARTOPTION_TABLE *smt_table
 {
     MDFOLD *folder = NULL;
     MDQUOT *quote = NULL;
+    MarketDataHeader *header = &smt_table->market_data.header;
     TRADE *trade = &smt_table->market_data.trade;
     ChannelSeconds *cs;
     uint32_t xymd, xhms, kymd, khms;
+    int32_t evol;
+    char check[8];
 
     // Get Symbol from Locate code
-    if ((folder = smtfold(fep, trade->locate_code)) == NULL)
+    if ((folder = smtfold(fep, trade->instrument_locate)) == NULL)
     {
         return (-1);
     }
@@ -40,7 +43,7 @@ static int _smt_trade_trade(FEP *fep, TOKEN *token, SMARTOPTION_TABLE *smt_table
     quote = &folder->quot;
 
     // Get Channel Seconds Information
-    if ((cs = readCs(smt_table, trade->protocol_id, trade->channel_index)) == NULL)
+    if ((cs = readCs(smt_table, header->protocol_id, header->channel_index)) == NULL)
     {
         return (-1);
     }
@@ -51,7 +54,12 @@ static int _smt_trade_trade(FEP *fep, TOKEN *token, SMARTOPTION_TABLE *smt_table
             return (0);
 
         // Trade Current Volume
-        quote->evol = quote->tvol - trade->size;
+        evol = quote->tvol - trade->size;
+        
+        if(evol >= 0)
+            quote->evol = evol;
+        else
+            quote->evol = trade->size;
 
         // Trade Total Volume
         quote->tvol = trade->size;
@@ -73,7 +81,7 @@ static int _smt_trade_trade(FEP *fep, TOKEN *token, SMARTOPTION_TABLE *smt_table
         quote->seqn = 0;
 
     if (quote->tymd < xymd)
-        quote->tymd = xhms;
+        quote->tymd = xymd;
 
     quote->xymd = xymd;
     quote->xhms = xhms;
@@ -83,28 +91,28 @@ static int _smt_trade_trade(FEP *fep, TOKEN *token, SMARTOPTION_TABLE *smt_table
     // Open Price
     if (trade->eligibility_flags & EL_OPEN_PRICE_FLAG)
     {
-        quote->open = trade->price;
+        quote->open = trade->price.value;
         quote->otim = quote->xhms;
     }
 
     // High Price
-    if ((quote->high != trade->price) && (trade->eligibility_flags & EL_HIGH_LOW_PRICE_FLAG))
+    if ((quote->high < trade->price.value) && (trade->eligibility_flags & EL_HIGH_LOW_PRICE_FLAG))
     {
-        quote->high = trade->price;
+        quote->high = trade->price.value;
         quote->htim = quote->xhms;
     }
 
     // Low Price
-    if ((quote->lowp != trade->price) && (trade->eligibility_flags & EL_HIGH_LOW_PRICE_FLAG))
+    if ((quote->low > trade->price.value) && (trade->eligibility_flags & EL_HIGH_LOW_PRICE_FLAG))
     {
-        quote->lowp = trade->price;
+        quote->low = trade->price.value;
         quote->ltim = quote->xhms;
     }
 
     // Close Price
     if (trade->eligibility_flags & EL_CLOSE_PRICE_FLAG)
     {
-        quote->setp = trade->price;
+        quote->setp = trade->price.value;
         quote->symd = quote->xymd;
         check[SETT] = 1;
         fep->cast[SETT] = 1;
