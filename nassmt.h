@@ -454,6 +454,7 @@ typedef struct
 /* smtfep.c */
 /************/
 MDFOLD *smtfold(FEP *fep, uint64_t locate_code);
+int smt_push(FEP *fep, MDFOLD *folder, char *check);
 
 /*****************/
 /* smartoption.c */

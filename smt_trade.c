@@ -128,6 +128,8 @@ static int _smt_trade_trade(FEP *fep, TOKEN *token, SMARTOPTION_TABLE *smt_table
     check[QUOT] = 1;
     fep->cast[QUOT] = 1;
 
+    smt_push(fep, folder, check);
+
     return (0);
 }
 

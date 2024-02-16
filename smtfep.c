@@ -62,6 +62,155 @@ int main(int argc, char **argv)
     return (0);
 }
 
+void smtsett(FEP *fep, MDFOLD *folder, uint32_t symd, double price, char *check)
+{
+    MDMSTR *m = &folder->mstr;
+    MDQUOT *q = &folder->quot;
+    MDQUOT *a = &folder->quat;
+    float base = 0., prev = 0.;
+    uint32_t pymd;
+
+    if (symd == 0)
+        symd = folder->mstr.prev.symd;
+
+    if (folder->mstr.prev.symd > symd)
+        return;
+
+    m->base = price;
+    m->clos = price;
+
+    if (folder->mstr.prev.symd != symd)
+    {
+        prev = m->prev.setp;
+        pymd = m->prev.symd;
+        memset(&m->prev, 0, sizeof(m->prev));
+        fep_time(fep, 0, &folder->mstr.prev.uymd, &folder->mstr.prev.uhms, NULL, NULL);
+        if (q->base != 0.)
+            prev = q->base;
+        m->prev.base = prev; // prior settlement price
+        m->prev.pymd = pymd; // prior trading day
+    }
+
+    m->prev.symd = symd;
+    m->prev.setp = price;
+    m->cymd = symd;
+
+    if (q->tymd == symd)
+    {
+        base = (q->base != 0.) ? q->base : prev;
+        q->xymd = (q->xymd == 0) ? symd : q->xymd;
+        q->open = (q->open == 0.) ? price : q->open;
+        q->high = (q->high == 0.) ? price : q->high;
+        q->low = (q->low == 0.) ? price : q->low;
+        q->last = (q->last == 0.) ? price : q->last;
+        q->diff = q->last - base;
+        q->rate = (q->diff * 100) / base;
+        prev = base;
+
+        m->prev.symd = symd;
+        m->prev.base = q->base;
+        m->prev.open = (a->open > 0) ? a->open : q->open;
+        m->prev.high = (q->high < a->high) ? a->high : q->high;
+        m->prev.low = (a->low > 0 && a->low < q->low) ? a->low : q->low;
+        m->prev.last = q->last;
+        m->prev.tvol = q->tvol + a->tvol;
+        m->prev.opin = q->opin;
+    }
+
+    if (m->prev.open == 0.)
+        m->prev.open = price;
+    if (m->prev.high == 0.)
+        m->prev.high = price;
+    if (m->prev.low == 0.)
+        m->prev.low = price;
+    if (m->prev.last == 0.)
+        m->prev.last = price;
+    if ((prev = m->prev.base) != 0.)
+    {
+        m->prev.diff = m->prev.setp - prev;
+        m->prev.rate = (m->prev.diff * 100) / prev;
+        if (m->uplp != 0. && m->prev.setp == m->uplp)
+            m->prev.sign = _UL_;
+        else if (m->dnlp != 0. && m->prev.setp == m->dnlp)
+            m->prev.sign = _DL_;
+        else if (m->prev.diff > 0)
+            m->prev.sign = _UP_;
+        else if (m->prev.diff < 0)
+            m->prev.sign = _DN_;
+        else
+            m->prev.sign = _NC_;
+    }
+    if (check != NULL)
+        check[MSTR] = 1;
+    else
+        putfolder(fep, folder, MSTR);
+
+    fep_log(fep, FL_PROGRESS, "STEP-3 %s smtsett symd:%d  P:%g ", folder->symb, m->prev.symd, m->prev.setp);
+}
+
+int smt_push(FEP *fep, MDFOLD *folder, char *check)
+{
+    /* Memory Update */
+    if (check[SETT])
+    {
+        smtsett(fep, folder, folder->quot.symd, folder->quot.setp, check);
+        check[SETT] = 0;
+    }
+    if (check[MSTR] || folder->mstr.xage > 0)
+    {
+        folder->mstr.xage = 0;
+        putfolder(fep, folder, MSTR);
+        check[MSTR] = 0;
+    }
+    if (check[QUOT])
+    {
+        folder->quot.pask = folder->dept.ask[0].pask;
+        folder->quot.pbid = folder->dept.bid[0].pbid;
+        folder->quot.vask = folder->dept.ask[0].vask;
+        folder->quot.vbid = folder->dept.bid[0].vbid;
+        fep_push(fep, folder, QUOT);
+        check[QUOT] = 0;
+    }
+    if (check[DEPT])
+    {
+        upddept(fep, folder, d);
+        check[DEPT] = 0;
+    }
+    if (check[CANC])
+    {
+        check[CANC] = 0;
+    }
+
+    /* Feed Start */
+    if (fep->cast[MSTR])
+    {
+        fep_feed(fep, folder, MSTR, &folder->mstr);
+        fep->cast[MSTR] = 0;
+    }
+    if (fep->cast[QUOT])
+    {
+        fep_log(fep, FL_PROGRESS, "1) fep_feed now: SYMB:%s V:%d T:%d P:%f", folder->quot.symb, folder->quot.evol, folder->quot.tvol, folder->quot.last);
+        fep_feed(fep, folder, QUOT, &quot);
+        fep->cast[QUOT] = 0;
+    }
+    if (fep->cast[DEPT])
+    {
+        fep_feed(fep, folder, DEPT, &folder->dept);
+        fep->cast[DEPT] = 0;
+    }
+    if (fep->cast[SETT])
+    {
+        fep_feed(fep, folder, SETT, &folder->mstr);
+        fep->cast[SETT] = 0;
+    }
+    if (fep->cast[CANC])
+    {
+        fep_feed(fep, folder, CANC, &folder->quot);
+        fep->cast[CANC] = 0;
+    }
+    return (0);
+}
+
 /*
  * Function: smtfold()
  * --------------------------------------
