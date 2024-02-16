@@ -17,13 +17,13 @@ int smt_0x33(SMARTOPTION_TABLE *smt_table)
     switch (inst->product_type)
     {
     case EQUITY_PRODUCT: // 1단계
-        _smt_equity(smt_table->fep, smt_table->token, (SMARTOPTION_TABLE *)smt_table);
+        _smt_equity(smt_table->fep, smt_table->token, smt_table);
         break;
     case OPTION_ROOT_PRODUCT: // 2단계
-        _smt_root(smt_table->fep, smt_table->token, (SMARTOPTION_TABLE *)smt_table);
+        _smt_root(smt_table->fep, smt_table->token, smt_table);
         break;
     case OPTION_PRODUCT: // 3단계
-        _smt_option(smt_table->fep, smt_table->token, (SMARTOPTION_TABLE *)smt_table);
+        _smt_option(smt_table->fep, smt_table->token, smt_table);
         break;
     case INDEX_PRODUCT:
     case WORLD_CURRENCY_PRODUCT:
@@ -190,6 +190,7 @@ static int _smt_option(FEP *fep, TOKEN *token, SMARTOPTION_TABLE *smt_table)
     {
         mstr->uymd = token->xymd;
         mstr->uhms = token->xhms;
+        fep_scidupd(fep, folder);
         memset(check, 0, sizeof(check));
         check[MSTR] = 1;
         fep->cast[MSTR] = 1;

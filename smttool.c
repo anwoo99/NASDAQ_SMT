@@ -115,6 +115,11 @@ int getweek(int date)
     return week;
 }
 
+/*
+ * Function: getwday()
+ * -----------------------------
+ * Date(20240214) -> 요일
+ */
 int getwday(int date)
 {
     int year, month, mday;
@@ -138,8 +143,36 @@ int getwday(int date)
 
     // Convert to localtime
     tm = localtime(&clock);
-    
+
     return (tm->tm_wday);
+}
+
+/*
+ * Function: gettime_from_mid_sec()
+ * -------------------------------
+ * 자정부터 경과한 초 => time_t 값
+ */
+time_t gettime_from_mid_sec(uint64_t seconds_from_midnight)
+{
+    time_t curr;
+    struct tm time_c;
+
+    // 현재 시간 구하기
+    time(&curr);
+
+    // 현재 시간을 지역 시간으로 변환
+    localtime_r(&curr, &time_c);
+
+    // 오늘 자정으로 설정
+    time_c.tm_hour = 0;
+    time_c.tm_min = 0;
+    time_c.tm_sec = 0;
+
+    // 지정된 초를 더함
+    time_c.tm_sec += seconds_from_midnight;
+
+    // mktime을 사용하여 struct tm을 time_t로 변환
+    return mktime(&time_c);
 }
 
 /********************************/

@@ -3,6 +3,7 @@
 static int cmplocate(const void *a, const void *b);
 static int cmpcs(const void *a, const void *b);
 static int cmpmcl(const void *a, const void *b);
+static int cmptrade(const void *a, const void *b);
 
 /*
  * Function: initsmt()
@@ -18,7 +19,11 @@ int initsmt(FEP *fep, int key, int clr)
     int offset = 0;
     struct shmid_ds shminfo;
 
-    shmsz = (INT_MAX / 8 + 16) + sizeof(int) + (sizeof(InstrumentLocate) * fep->xchg->room) + sizeof(int) + (sizeof(ChannelSeconds) * MAX_CHANNEL) + (sizeof(MarketCenterLocate) * MAX_MARKET_CENTER);
+    shmsz = (INT_MAX / 8 + 16);
+    shmsz += sizeof(int) + (sizeof(InstrumentLocate) * fep->xchg->room);
+    shmsz += sizeof(int) + (sizeof(ChannelSeconds) * MAX_CHANNEL);
+    shmsz += sizeof(int) + (sizeof(MarketCenterLocate) * MAX_MARKET_CENTER);
+    shmsz += sizeof(int) + (sizeof(TRADE) * MAX_TRADE_ID);
 
     if ((shmid = shmget(key, 0, 0666)) < 0)
     {
@@ -66,6 +71,14 @@ int initsmt(FEP *fep, int key, int clr)
     // 7) mc_list
     offset += sizeof(int);
     shm_smart->mcl_list = (MarketCenterLocate *)(shmad + offset);
+
+    // 8) trade_size
+    offset += (sizeof(MarketCenterLocate) * MAX_MARKET_CENTER);
+    shm_smart->trade_size = (int *)(shmad + offset);
+
+    // 9) trade_list
+    offset += sizeof(int);
+    shm_smart->trade_list = (TRADE *)(shmad + offset);
 
     fep->bit = shm_smart;
 
@@ -459,7 +472,120 @@ int deleteMcl(SMARTOPTION_TABLE *smt_table, uint64_t locate_code)
     *shm_smart->mcl_size -= 1;
 
     // bsearch를 위한 qsort
-    qsort(shm_smart->mcl_list, *shm_smart->mcl_size, sizeof(ChannelSeconds), cmpmcl);
+    qsort(shm_smart->mcl_list, *shm_smart->mcl_size, sizeof(MarketCenterLocate), cmpmcl);
+
+    return (0);
+}
+
+/*
+ * Function: createTrade()
+ * ---------------------------------------
+ * smt_table 내 TRADE 정보
+ * 공유메모리 등록
+ */
+TRADE *createTrade(SMARTOPTION_TABLE *smt_table)
+{
+    FEP *fep = smt_table->fep;
+    SHM_SMART *shm_smart = (SHM_SMART *)fep->bit;
+    TRADE *smt_trade = &smt_table->market_data.trade;
+    TRADE *retv;
+
+    // TRADE 가 이미 존재하면 해당 정보 리턴
+    if ((retv = readTrade(smt_table, smt_trade->locate_code, smt_trade->trade_id)) != NULL)
+        return (retv);
+
+    if (*shm_smart->trade_size >= MAX_TRADE_ID)
+    {
+        fep_log(fep, FL_PROGRESS, "Failed to add trade information.");
+        return (NULL);
+    }
+
+    memcpy(&shm_smart->trade_list[*shm_smart->trade_size], smt_trade, sizeof(TRADE));
+    *shm_smart->trade_size += 1;
+
+    // bsearch를 위한 qsort(locate code)
+    qsort(shm_smart->trade_list, *shm_smart->trade_size, sizeof(TRADE), cmptrade);
+
+    fep_log(fep, FL_DEBUG, "TRADE info added. ID(%lu) LOCATE(%lu)", smt_trade->trade_id, smt_trade->locate_code);
+
+    return (smt_trade);
+}
+
+/*
+ * Function: readTrade()
+ * ------------------------------------------
+ * 공유메모리 내 TRADE 정보 읽기
+ */
+TRADE *readTrade(SMARTOPTION_TABLE *smt_table, uint64_t locate_code, uint64_t trade_id)
+{
+    FEP *fep = smt_table->fep;
+    SHM_SMART *shm_smart = (SHM_SMART *)fep->bit;
+    TRADE key, *retv;
+
+    // 인자값에 해당하는 데이터 찾기
+    key.locate_code = locate_code;
+    key.trade_id = trade_id;
+    retv = bsearch(&key, shm_smart->trade_list, *shm_smart->trade_size, sizeof(TRADE), cmptrade);
+
+    return (retv);
+}
+
+/*
+ * Function: updateTrade()
+ * ----------------------------------
+ * smt_table내 TRADE 정보
+ * 공유메모리 업데이트
+ */
+TRADE *updateTrade(SMARTOPTION_TABLE *smt_table)
+{
+    FEP *fep = smt_table->fep;
+    SHM_SMART *shm_smart = (SHM_SMART *)fep->bit;
+    TRADE *smt_trade = &smt_table->market_data.trade;
+    TRADE *retv;
+
+    // Trade가 존재하지 않으면 생성 후 리턴
+    if ((retv = readTrade(smt_table, smt_trade->locate_code, smt_trade->trade_id)) == NULL)
+        return (readTrade(smt_table));
+
+    // Trade 업데이트
+    memcpy(retv, smt_trade, sizeof(TRADE));
+
+    // bsearch를 위한 qsort
+    qsort(shm_smart->trade_list, *shm_smart->trade_size, sizeof(TRADE), cmptrade);
+
+    return (smt_trade);
+}
+
+/*
+ * Function: deleteTrade()
+ * -----------------------------------------
+ * Trade 정보 삭제
+ */
+int deleteTrade(SMARTOPTION_TABLE *smt_table, uint64_t locate_code, uint64_t trade_id)
+{
+    FEP *fep = smt_table->fep;
+    SHM_SMART *shm_smart = (SHM_SMART *)fep->bit;
+    TRADE *retv;
+    char *from, *to;
+    int index, size;
+
+    // Trade 가 존재하지 않으면 리턴
+    if ((retv = readTrade(smt_table, locate_code, trade_id)) == NULL)
+        return (0);
+
+    // Delete
+    index = (int)(((unsigned long)retv - (unsigned long)shm_smart->trade_list) / sizeof(TRADE));
+    size = (*shm_smart->trade_size - index - 1) * sizeof(TRADE);
+
+    from = (char *)&retv[1];
+    to = (char *)&retv[0];
+
+    memmove(to, from, size);
+
+    *shm_smart->trade_size -= 1;
+
+    // bsearch를 위한 qsort
+    qsort(shm_smart->trade_list, *shm_smart->trade_size, sizeof(TRADE), cmptrade);
 
     return (0);
 }
@@ -508,4 +634,24 @@ static int cmpmcl(const void *a, const void *b)
         return -1;
     else
         return 0;
+}
+
+static int cmptrade(const void *a, const void *b)
+{
+    TRADE *s1 = (TRADE *)a;
+    TRADE *s2 = (TRADE *)b;
+
+    if (s1->locate_code > s2->locate_code)
+        return 1;
+    else if (s1->locate_code < s2->locate_code)
+        return -1;
+    else
+    {
+        if (s1->trade_id > s2->trade_id)
+            return 1;
+        else if (s1->trade_id < s2->trade_id)
+            return -1;
+        else
+            return 0;
+    }
 }

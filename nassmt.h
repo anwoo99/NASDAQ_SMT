@@ -264,6 +264,17 @@ typedef struct
 #define TRADE_TRADE_TYPE 'T'
 #define CANCEL_TRADE_TYPE 'C'
 
+// **Eligibility Flag
+#define EL_LAST_QUOTE_PRICE_FLAG 0x08
+#define EL_TOTAL_VOLUME_FLAG 0x10
+#define EL_HIGH_LOW_PRICE_FLAG 0x20
+#define EL_OPEN_PRICE_FLAG 0x40
+#define EL_CLOSE_PRICE_FLAG 0x80
+
+// **Change Flag
+#define CF_MARKET_CENTER_VOLUME 0x02
+#define CF_MARKET_CENTER_LAST_SALE_PRICE 0x08
+
 // 11. Trade Short Form
 #define SHORT_TRADE_MSG_TYPE 0x70
 
@@ -425,6 +436,7 @@ typedef struct smartoption_table
 /***********************************/
 #define MAX_CHANNEL 1024
 #define MAX_MARKET_CENTER 5000
+#define MAX_TRADE_ID 5000
 typedef struct
 {
     unsigned char *bit;
@@ -434,7 +446,14 @@ typedef struct
     ChannelSeconds *cs_list;
     int *mcl_size;
     MarketCenterLocate *mcl_list;
+    int *trade_size;
+    TRADE *trade_list;
 } SHM_SMART;
+
+/************/
+/* smtfep.c */
+/************/
+MDFOLD *smtfold(FEP *fep, uint64_t locate_code);
 
 /*****************/
 /* smartoption.c */
@@ -462,13 +481,18 @@ MarketCenterLocate *readMcl(SMARTOPTION_TABLE *smt_table, uint64_t locate_code);
 MarketCenterLocate *updateMcl(SMARTOPTION_TABLE *smt_table);
 int deleteMcl(SMARTOPTION_TABLE *smt_table, uint64_t locate_code);
 
+TRADE *createTrade(SMARTOPTION_TABLE *smt_table);
+TRADE *readTrade(SMARTOPTION_TABLE *smt_table, uint64_t locate_code, uint64_t trade_id);
+TRADE *updateTrade(SMARTOPTION_TABLE *smt_table);
+int deleteTrade(SMARTOPTION_TABLE *smt_table, uint64_t locate_code, uint64_t trade_id);
 
 /****************/
 /* smt function */
 /****************/
-int smt_0x22(SMARTOPTION_TABLE *smt_table); // Channel Seconds
-int smt_0x30(SMARTOPTION_TABLE *smt_table); // Market Center Locate
-int smt_0x33(SMARTOPTION_TABLE *smt_table); // Instrument Locate
+int smt_0x22(SMARTOPTION_TABLE *smt_table);  // Channel Seconds
+int smt_0x30(SMARTOPTION_TABLE *smt_table);  // Market Center Locate
+int smt_0x33(SMARTOPTION_TABLE *smt_table);  // Instrument Locate
+int smt_trade(SMARTOPTION_TABLE *smt_table); // Trade Message
 
 /*************/
 /* smttool.c */
@@ -479,6 +503,7 @@ void convert_big_endian_to_int64_t(char *from, int64_t *to, size_t size);
 void convert_nanosec_to_time_t(uint64_t *from, time_t *to);
 int getweek(int date);
 int getwday(int date);
+time_t gettime_from_mid_sec(uint64_t seconds_from_midnight);
 
 // Message Buffer
 int read_msg_buff(MSGBUFF *msgbuff, FIXEDFLD *fixedfld);

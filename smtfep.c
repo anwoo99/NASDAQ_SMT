@@ -54,11 +54,29 @@ int main(int argc, char **argv)
     signal(SIGQUIT, stopit);
     signal(SIGTERM, stopit);
 
-    initsmt(fep, IPCK(fep->xchg->ipck, COOKER, 1), 0);
+    initsmt(fep, IPCK(fep->xchg->ipck, COOKER, 1), 0); // Shared memory for SMART Option
+    fep_scidinit(fep);                                 // Instrument Locate Shared Memory initialize
 
     fep_init(fep, &procedure, 1);
     fep_close(fep);
     return (0);
+}
+
+/*
+ * Function: smtfold()
+ * --------------------------------------
+ * Locate Code 기반 Corise Symbol 폴더 탐색
+ */
+MDFOLD *smtfold(FEP *fep, uint64_t locate_code)
+{
+    MDFOLD *folder;
+    char symbol[MAX_SYMB_LEN];
+
+    if (fep_scid2symb(fep, locate_code, symbol) != 0)
+        return (NULL);
+
+    folder = getfolder(fep, symbol);
+    return (folder);
 }
 
 /*
@@ -87,7 +105,7 @@ static int smtrcv(FEP *fep, void *argv)
     nas_smt_csv(fep, &smt_table);
 
     // Call the function
-    if(smt_table.proc != NULL)
+    if (smt_table.proc != NULL)
         rc = (*smt_table.proc)(&smt_table);
 
     return (rc);
