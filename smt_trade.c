@@ -30,8 +30,10 @@ static int _smt_trade_trade(FEP *fep, TOKEN *token, SMARTOPTION_TABLE *smt_table
     TRADE *trade = &smt_table->market_data.trade;
     ChannelSeconds *cs;
     uint32_t xymd, xhms, kymd, khms;
-    int32_t evol;
+    int32_t evol = 0;
     char check[8];
+
+    memset(check, 0x00, sizeof(check));
 
     // Get Symbol from Locate code
     if ((folder = smtfold(fep, trade->instrument_locate)) == NULL)
@@ -54,7 +56,7 @@ static int _smt_trade_trade(FEP *fep, TOKEN *token, SMARTOPTION_TABLE *smt_table
             return (0);
 
         // Trade Current Volume
-        evol = quote->tvol - trade->size;
+        evol = trade->size - quote->tvol;
         
         if(evol >= 0)
             quote->evol = evol;
