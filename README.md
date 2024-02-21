@@ -16,6 +16,9 @@
     - [3.1. Nasdaq Smart Option 테스트 데이터 다운로드](#31-nasdaq-smart-option-테스트-데이터-다운로드)
     - [3.2. Nasdaq Smart Option 테스트 데이터 사용법](#32-nasdaq-smart-option-테스트-데이터-사용법)
   - [4. Nasdaq Smart Option Raw Data 확인](#4-nasdaq-smart-option-raw-data-확인)
+  - [5. 소스파일](#5-소스파일)
+    - [5.1. 위치](#51-위치)
+    - [5.2. 수정 방법](#52-수정-방법)
 
 ## 1. NASDAQ Smartoption Spec Sheet
 
@@ -87,5 +90,24 @@ graph TD
 3. 원하는 주피터 노트북 파일 클릭
 4. pd.read_csv 에 분석하고자 하는 csv 파일명 기입
 5. "Run" -> "Run All Cells" 클릭 후 데이터 확인
+
+## 5. 소스파일
+### 5.1. 위치
+```plaintext
+  [서버명]:/mdfsvc/src/FEP/SMART/
+```
+
+### 5.2. 수정 방법
+```mermaid
+graph TD
+  A[git pull] --> B[소스 코드 수정]
+  B --> |컴파일|C[make all]
+  C --> D[터미널 상 실행]
+  D --> |오류|B
+  D --> |정상|E[make install]
+  E --> F[git add <수정 파일>]
+  F --> G[git commit -m <커밋메세지>]
+  G --> H[git push origin master]
+```
 ---
 © 2024 Corise Technology.
