@@ -153,9 +153,10 @@ int upddept(FEP *fep, MDFOLD *folder)
     MDDEPT *d = &folder->dept;
     uint32_t vbid = 0, vask = 0;
     uint32_t nbid = 0, nask = 0;
+    int ii;
 
     // check market depth
-    for (int ii = 0; ii < DEPTH_LEVEL; ii++)
+    for (ii = 0; ii < DEPTH_LEVEL; ii++)
     {
         vask += d->ask[ii].vask;
         nask += d->ask[ii].nask;
