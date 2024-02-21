@@ -333,14 +333,15 @@ static void format_size(long size, char *result, int result_size)
 {
     const char *units[] = {"B", "KB", "MB", "GB", "TB"};
     int unit_index = 0;
+    double rest = (double)size;
 
-    while (size > 1024 && unit_index < sizeof(units) / sizeof(units[0]) - 1)
+    while (rest > 1024 && unit_index < sizeof(units) / sizeof(units[0]) - 1)
     {
-        size /= 1024;
+        rest /= 1024;
         unit_index++;
     }
 
-    snprintf(result, result_size, "%ld %s", size, units[unit_index]);
+    snprintf(result, result_size, "%.1f %s", rest, units[unit_index]);
 }
 
 static void print_progress(long bytesRead, long totalFileSize, char *filename)
