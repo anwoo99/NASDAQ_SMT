@@ -114,8 +114,8 @@ static int _smt_trade_trade(FEP *fep, TOKEN *token, SMARTOPTION_TABLE *smt_table
     {
         quote->setp = trade->price.value;
         quote->symd = quote->xymd;
-        check[SETT] = 1;
-        fep->cast[SETT] = 1;
+        check[SETT] |= CHK_UPDATE;
+        check[SETT] |= CHK_FEED;
         return (0);
     }
 
@@ -125,8 +125,8 @@ static int _smt_trade_trade(FEP *fep, TOKEN *token, SMARTOPTION_TABLE *smt_table
         quote->tvol = trade->size;
     }
 
-    check[QUOT] = 1;
-    fep->cast[QUOT] = 1;
+    check[QUOT] |= CHK_UPDATE;
+    check[QUOT] |= CHK_FEED;
 
     smt_push(fep, folder, check);
 

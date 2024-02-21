@@ -151,62 +151,62 @@ void smtsett(FEP *fep, MDFOLD *folder, uint32_t symd, double price, char *check)
 int smt_push(FEP *fep, MDFOLD *folder, char *check)
 {
     /* Memory Update */
-    if (check[SETT])
+    if (check[SETT] & CHK_UPDATE)
     {
         smtsett(fep, folder, folder->quot.symd, folder->quot.setp, check);
-        check[SETT] = 0;
+        check[SETT] &= ~CHK_UPDATE;
     }
-    if (check[MSTR] || folder->mstr.xage > 0)
+    if ((check[MSTR] & CHK_UPDATE) || folder->mstr.xage > 0)
     {
         folder->mstr.xage = 0;
         putfolder(fep, folder, MSTR);
-        check[MSTR] = 0;
+        check[MSTR] &= ~CHK_UPDATE;
     }
-    if (check[QUOT])
+    if (check[QUOT] & CHK_UPDATE)
     {
         folder->quot.pask = folder->dept.ask[0].pask;
         folder->quot.pbid = folder->dept.bid[0].pbid;
         folder->quot.vask = folder->dept.ask[0].vask;
         folder->quot.vbid = folder->dept.bid[0].vbid;
         fep_push(fep, folder, QUOT);
-        check[QUOT] = 0;
+        check[QUOT] &= ~CHK_UPDATE;
     }
-    if (check[DEPT])
+    if (check[DEPT] & CHK_UPDATE)
     {
-        upddept(fep, folder, d);
-        check[DEPT] = 0;
+        //upddept(fep, folder, d);
+        check[DEPT] &= ~CHK_UPDATE;
     }
-    if (check[CANC])
+    if (check[CANC] & CHK_UPDATE)
     {
-        check[CANC] = 0;
+        check[CANC] &= ~CHK_UPDATE;
     }
 
     /* Feed Start */
-    if (fep->cast[MSTR])
+    if (check[MSTR] & CHK_FEED)
     {
-        fep_feed(fep, folder, MSTR, &folder->mstr);
-        fep->cast[MSTR] = 0;
+        fep_feed(fep, folder, MSTR, NULL);
+        check[MSTR] &= ~CHK_FEED;
     }
-    if (fep->cast[QUOT])
+    if (check[QUOT] & CHK_FEED)
     {
         fep_log(fep, FL_PROGRESS, "1) fep_feed now: SYMB:%s V:%d T:%d P:%f", folder->quot.symb, folder->quot.evol, folder->quot.tvol, folder->quot.last);
-        fep_feed(fep, folder, QUOT, &quot);
-        fep->cast[QUOT] = 0;
+        fep_feed(fep, folder, QUOT, NULL);
+        check[QUOT] &= ~CHK_FEED;
     }
-    if (fep->cast[DEPT])
+    if (check[DEPT] & CHK_FEED)
     {
-        fep_feed(fep, folder, DEPT, &folder->dept);
-        fep->cast[DEPT] = 0;
+        fep_feed(fep, folder, DEPT, NULL);
+        check[DEPT] &= ~CHK_FEED;
     }
-    if (fep->cast[SETT])
+    if (check[SETT] & CHK_FEED)
     {
-        fep_feed(fep, folder, SETT, &folder->mstr);
-        fep->cast[SETT] = 0;
+        fep_feed(fep, folder, SETT, NULL);
+        check[SETT] &= ~CHK_FEED;
     }
-    if (fep->cast[CANC])
+    if (check[CANC] & CHK_FEED)
     {
-        fep_feed(fep, folder, CANC, &folder->quot);
-        fep->cast[CANC] = 0;
+        fep_feed(fep, folder, CANC, NULL);
+        check[CANC] &= ~CHK_FEED;
     }
     return (0);
 }

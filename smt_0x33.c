@@ -192,8 +192,8 @@ static int _smt_option(FEP *fep, TOKEN *token, SMARTOPTION_TABLE *smt_table)
         mstr->uhms = token->xhms;
         fep_scidupd(fep, folder);
         memset(check, 0, sizeof(check));
-        check[MSTR] = 1;
-        fep->cast[MSTR] = 1;
+        check[MSTR] |= CHK_UPDATE;
+        check[MSTR] |= CHK_FEED;
         // naspush(fep, folder, NULL, check);
     }
 

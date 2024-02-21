@@ -122,7 +122,7 @@ InstrumentLocate *createInst(SMARTOPTION_TABLE *smt_table)
     }
 
     // Set bit
-    setbit(shm_smart->bit, smt_inst->locate_code);
+    setbit(shm_smart->bit, (unsigned int)smt_inst->locate_code);
 
     // Instrument Locate 정보 등록
     memcpy(&shm_smart->inst_list[*shm_smart->inst_size], smt_inst, sizeof(InstrumentLocate));
@@ -148,7 +148,7 @@ InstrumentLocate *readInst(SMARTOPTION_TABLE *smt_table, uint64_t locate_code)
     InstrumentLocate key, *retv;
 
     // Check bit.
-    if (chkbit(shm_smart->bit, locate_code) == 0)
+    if (chkbit(shm_smart->bit, (unsigned int)locate_code) == 0)
         return (NULL);
 
     // 인자로 받은 locate code에 해당하는 데이터 찾기
@@ -176,7 +176,7 @@ InstrumentLocate *updateInst(SMARTOPTION_TABLE *smt_table)
         return (createInst(smt_table));
 
     // Set bit
-    setbit(shm_smart->bit, smt_inst->locate_code);
+    setbit(shm_smart->bit, (unsigned int)smt_inst->locate_code);
 
     // Channel Seconds 업데이트
     memcpy(retv, smt_inst, sizeof(InstrumentLocate));
@@ -205,7 +205,7 @@ int deleteInst(SMARTOPTION_TABLE *smt_table, uint64_t locate_code)
         return (0);
 
     // Clear bit
-    clrbit(shm_smart->bit, locate_code);
+    clrbit(shm_smart->bit, (unsigned int)locate_code);
 
     // Delete
     index = (int)(((unsigned long)retv - (unsigned long)shm_smart->inst_list) / sizeof(InstrumentLocate));
