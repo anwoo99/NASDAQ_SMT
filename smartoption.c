@@ -729,7 +729,7 @@ int smt_decode(SMARTOPTION_TABLE *smt_table)
     case SHORT_2_SIDED_NBBO_MSG_TYPE: // 0x60
     {
         strcpy(smt_table->name, "NBBO(S2)");
-        smt_table->loglevel = FL_PROGRESS;
+        smt_table->loglevel = FL_DEBUG;
         smt_table->logflag = 0;
         smt_table->market_data.nbbo.nside = 2;
         smt_nbbo_decode(smt_table);
@@ -738,46 +738,51 @@ int smt_decode(SMARTOPTION_TABLE *smt_table)
     case LONG_2_SIDED_NBBO_MSG_TYPE: // 0x61
     {
         strcpy(smt_table->name, "NBBO(L2)");
-        smt_table->loglevel = FL_PROGRESS;
+        smt_table->loglevel = FL_DEBUG;
         smt_table->logflag = 0;
         smt_table->market_data.nbbo.nside = 2;
         smt_nbbo_decode(smt_table);
+        smt_table->proc = smt_nbbo;
         break;
     }
     case EXTENDED_2_SIDED_NBBO_MSG_TYPE: // 0x62
     {
         strcpy(smt_table->name, "NBBO(E2)");
-        smt_table->loglevel = FL_PROGRESS;
+        smt_table->loglevel = FL_DEBUG;
         smt_table->logflag = 0;
         smt_table->market_data.nbbo.nside = 2;
         smt_nbbo_decode(smt_table);
+        smt_table->proc = smt_nbbo;
         break;
     }
     case SHORT_1_SIDED_NBBO_MSG_TYPE: // 0x63
     {
         strcpy(smt_table->name, "NBBO(S1)");
-        smt_table->loglevel = FL_PROGRESS;
+        smt_table->loglevel = FL_DEBUG;
         smt_table->logflag = 0;
         smt_table->market_data.nbbo.nside = 1;
         smt_nbbo_decode(smt_table);
+        smt_table->proc = smt_nbbo;
         break;
     }
     case LONG_1_SIDED_NBBO_MSG_TYPE: // 0x64
     {
         strcpy(smt_table->name, "NBBO(L1)");
-        smt_table->loglevel = FL_PROGRESS;
+        smt_table->loglevel = FL_DEBUG;
         smt_table->logflag = 0;
         smt_table->market_data.nbbo.nside = 1;
         smt_nbbo_decode(smt_table);
+        smt_table->proc = smt_nbbo;
         break;
     }
     case EXTENDED_1_SIDED_NBBO_MSG_TYPE: // 0x65
     {
         strcpy(smt_table->name, "NBBO(E1)");
-        smt_table->loglevel = FL_PROGRESS;
+        smt_table->loglevel = FL_DEBUG;
         smt_table->logflag = 0;
         smt_table->market_data.nbbo.nside = 1;
         smt_nbbo_decode(smt_table);
+        smt_table->proc = smt_nbbo;
         break;
     }
     case SHORT_TRADE_MSG_TYPE: // 0x70

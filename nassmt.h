@@ -494,6 +494,7 @@ int smt_0x22(SMARTOPTION_TABLE *smt_table);  // Channel Seconds
 int smt_0x30(SMARTOPTION_TABLE *smt_table);  // Market Center Locate
 int smt_0x33(SMARTOPTION_TABLE *smt_table);  // Instrument Locate
 int smt_trade(SMARTOPTION_TABLE *smt_table); // Trade Message
+int smt_nbbo(SMARTOPTION_TABLE *smt_table);  // NBBO Message
 
 /*************/
 /* smttool.c */
