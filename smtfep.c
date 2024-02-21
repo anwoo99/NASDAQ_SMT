@@ -148,6 +148,34 @@ void smtsett(FEP *fep, MDFOLD *folder, uint32_t symd, double price, char *check)
     fep_log(fep, FL_PROGRESS, "STEP-3 %s smtsett symd:%d  P:%g ", folder->symb, m->prev.symd, m->prev.setp);
 }
 
+int upddept(FEP *fep, MDFOLD *folder)
+{
+    MDDEPT *d = &folder->dept;
+    uint32_t vbid = 0, vask = 0;
+    uint32_t nbid = 0, nask = 0;
+
+    // check market depth
+    for (int ii = 0; ii < DEPTH_LEVEL; ii++)
+    {
+        vask += d->ask[ii].vask;
+        nask += d->ask[ii].nask;
+
+        vbid += d->bid[ii].vbid;
+        nbid += d->bid[ii].nbid;
+    }
+
+    // update values
+    d->vask = vask;
+    d->vbid = vbid;
+    d->nask = nask;
+    d->nbid = nbid;
+
+    gettimeofday(&d->dtim, NULL);
+    fep_push(fep, folder, DEPT);
+
+    return 0;
+}
+
 int smt_push(FEP *fep, MDFOLD *folder, char *check)
 {
     /* Memory Update */
@@ -173,7 +201,7 @@ int smt_push(FEP *fep, MDFOLD *folder, char *check)
     }
     if (check[DEPT] & CHK_UPDATE)
     {
-        //upddept(fep, folder, d);
+        upddept(fep, folder);
         check[DEPT] &= ~CHK_UPDATE;
     }
     if (check[CANC] & CHK_UPDATE)

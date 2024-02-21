@@ -26,7 +26,7 @@ int smt_nbbo(SMARTOPTION_TABLE *smt_table)
     }
 
     // Get Quote location
-    depth = &folder->quot;
+    depth = &folder->dept;
 
     // Get Channel Seconds Information
     if ((cs = readCs(smt_table, header->protocol_id, header->channel_index)) == NULL)
@@ -37,9 +37,9 @@ int smt_nbbo(SMARTOPTION_TABLE *smt_table)
     switch (nbbo->nside)
     {
     case 1:
-        if (nbbo->bid.side = 'B')
+        if (nbbo->bid.side == 'B')
             nbbo_flag |= _BID_FLAG;
-        if (nbbo->ask.side = 'S')
+        if (nbbo->ask.side == 'S')
             nbbo_flag |= _ASK_FLAG;
         break;
     case 2:
@@ -53,16 +53,16 @@ int smt_nbbo(SMARTOPTION_TABLE *smt_table)
     if (nbbo_flag & _ASK_FLAG)
     {
         BASK *bask = depth->ask;
-        bask[NBBO_LEVEL].vask = depth->ask.size;
-        bask[NBBO_LEVEL].pask = depth->ask.price.value;
+        bask[NBBO_LEVEL].vask = nbbo->ask.size;
+        bask[NBBO_LEVEL].pask = nbbo->ask.price.value;
     }
 
     // BID
     if (nbbo_flag & _BID_FLAG)
     {
         BBID *bbid = depth->bid;
-        bbid[NBBO_LEVEL].vbid = depth->bid.size;
-        bbid[NBBO_LEVEL].pbid = depth->bid.price.value;
+        bbid[NBBO_LEVEL].vbid = nbbo->bid.size;
+        bbid[NBBO_LEVEL].pbid = nbbo->bid.price.value;
     }
 
     // Set the current exchange time;
