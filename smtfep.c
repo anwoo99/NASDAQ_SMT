@@ -218,7 +218,6 @@ int smt_push(FEP *fep, MDFOLD *folder, char *check)
     }
     if (check[QUOT] & CHK_FEED)
     {
-        fep_log(fep, FL_PROGRESS, "1) fep_feed now: SYMB:%s V:%d T:%d P:%f", folder->quot.symb, folder->quot.evol, folder->quot.tvol, folder->quot.last);
         fep_feed(fep, folder, QUOT, NULL);
         check[QUOT] &= ~CHK_FEED;
     }
@@ -279,7 +278,7 @@ static int smtrcv(FEP *fep, void *argv)
     /* Smart Option Message Decoding */
     smt_decode(&smt_table);
 
-    /* Logging data */
+    /* Logging binary data */
     // nas_smt_log(fep, &smt_table, "[%d-Type=%s(0x%02X) SEQ:%u LEN:%d]", token->port, smt_table.name, smt_table.type, tr_packet->header.seqn, tr_packet->pkt_l);
 
     /* Logging Raw Data in CSV Format */
