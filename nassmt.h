@@ -62,17 +62,27 @@ typedef struct
 /*******************************/
 /* MoldUDP64 Downstream Packet */
 /*******************************/
-// 1. Header
-#define UDP_DWN_HDR_SESSION_LEN 10
-#define UDP_DWN_HDR_SEQN_LEN 8
-#define UDP_DWN_HDR_MSGCNT_LEN 2
+// Packet Header
+typedef struct
+{
+    uint64_t session;
+    uint64_t seqn;
+    uint64_t msg_count;
+} PACKET_HEADER;
 
-// 2. Message Block
+// Message Block
 typedef struct
 {
     size_t msgl;
     char data[MAX_BUFFER_SIZE];
 } MSG_BLOCK;
+
+// Downstream Packet
+typedef struct
+{
+    PACKET_HEADER header;
+    MSG_BLOCK *msg_blocks;
+} DWN_PACKET;
 
 // 3. Heartbeats
 #define UDP_DWN_HRTBT_MSGCNT_VALUE 0x0000
