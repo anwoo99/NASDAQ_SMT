@@ -169,7 +169,7 @@ int start_analyze()
 
         // Close the file
         fclose(file);
-        printf("\n\n Finished reading file '%s'.\n", NASDAQ_EMI_FILENAME[ii]);
+        printf("\n\n Finished reading file '%s'.\n\n", NASDAQ_EMI_FILENAME[ii]);
         ii++;
     }
     return 0;
