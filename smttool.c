@@ -256,14 +256,14 @@ void decode_fixedfld_all(FIXEDFLD *fixedfld, char *msgb, int *offset)
  */
 int read_msg_buff(MSGBUFF *msgbuff, FIXEDFLD *fixedfld)
 {
-    if (msgbuff->rest_size < size)
+    if (msgbuff->rest_size < *fixedfld->field_length)
         return MSG_BUFFER_SCARCED;
 
     msg2fixedfld(fixedfld, msgbuff->buffer, msgbuff->offset);
 
-    msgbuff->rest_size -= size;
-    msgbuff->offset += size;
-    msgbuff->msgl = size;
+    msgbuff->rest_size -= *fixedfld->field_length;
+    msgbuff->offset += *fixedfld->field_length;
+    msgbuff->msgl = *fixedfld->field_length;
     return 0;
 }
 

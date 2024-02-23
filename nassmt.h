@@ -114,12 +114,14 @@ typedef struct
 // Debug Packet("+")
 typedef struct
 {
+    SOUPBIN_TCP_HEADER header;
     char text[MAX_BUFFER_SIZE];
 } DEBUG_PACKET;
 
 // Login Accepted Packet("A")
 typedef struct
 {
+    SOUPBIN_TCP_HEADER header;
     char session[MAX_BUFFER_SIZE];
     uint64_t seqn;
 } LOGIN_ACCEPTED_PACKET;
@@ -127,6 +129,7 @@ typedef struct
 // Login Rejected Packet("J")
 typedef struct
 {
+    SOUPBIN_TCP_HEADER header;
     char reason_code;
 } LOGIN_REJECTED_PACKET;
 #define PASSWORD_ERROR 'A'
@@ -135,34 +138,19 @@ typedef struct
 // Data Packet
 typedef struct
 {
+    SOUPBIN_TCP_HEADER header;
     char message[MAX_BUFFER_SIZE];
 } DATA_PACKET;
 
 // Login Request Packet("L")
 typedef struct
 {
+    SOUPBIN_TCP_HEADER header;
     char username[MAX_BUFFER_SIZE];
     char password[MAX_BUFFER_SIZE];
     char session[MAX_BUFFER_SIZE];
     uint64_t seqn;
 } LOGIN_REQUEST_PACKET;
-
-/* 서버 측에서 발송하는 패킷 */
-typedef struct
-{
-    SOUPBIN_TCP_HEADER header;
-    DEBUG_PACKET debug_packet;
-    LOGIN_ACCEPTED_PACKET login_accepted_packet;
-    LOGIN_REJECTED_PACKET login_rejected_packet;
-    DATA_PACKET sequenced_data_packet;
-} SERVER_SOUPBIN_TCP_PACKET;
-
-/* 클라이언트 측에서 발송하는 패킷 */
-typedef struct
-{
-    LOGIN_REQUEST_PACKET login_request_packet;
-    DATA_PACKET unsequenced_data_packet;
-} CLIENT_SOUPBIN_TCP_PACKET;
 
 /********************/
 /* Custom Data Type */

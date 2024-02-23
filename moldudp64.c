@@ -17,7 +17,7 @@ uint64_t UDP_DWN_MSGBLK_MSGLEN_LEN = 2;
  * ------------------------------------------
  * 'Packet Header' 파싱
  */
-int parser_moldudp64_header(MSGBUF *msgbuff, PACKET_HEADER *packetheader)
+int parser_moldudp64_header(MSGBUFF *msgbuff, PACKET_HEADER *packetheader)
 {
     FIXEDFLD fixedfld[] = {
         {"Session", FIXEDFLD_UINT, &UDP_DWN_HDR_SESSION_LEN, &packetheader->session, 0},
@@ -58,7 +58,7 @@ int parser_moldudp64_dwn_packet(MSGBUFF *msgbuff, DWN_PACKET *dwnPacket, int fla
 {
     int retv = 0;
 
-    swtich(flag)
+    switch (flag)
     {
     case FLAG_PACKET_HEADER:
         retv = parser_moldudp64_header(msgbuff, &dwnPacket->header);
