@@ -256,14 +256,14 @@ void decode_fixedfld_all(FIXEDFLD *fixedfld, char *msgb, int *offset)
  */
 int read_msg_buff(MSGBUFF *msgbuff, FIXEDFLD *fixedfld)
 {
-    if (msgbuff->rest_size < *fixedfld->field_length)
+    if (msgbuff->rest_size < size)
         return MSG_BUFFER_SCARCED;
 
     msg2fixedfld(fixedfld, msgbuff->buffer, msgbuff->offset);
 
-    msgbuff->rest_size -= *fixedfld->field_length;
-    msgbuff->offset += *fixedfld->field_length;
-    msgbuff->msgl = *fixedfld->field_length;
+    msgbuff->rest_size -= size;
+    msgbuff->offset += size;
+    msgbuff->msgl = size;
     return 0;
 }
 
@@ -295,6 +295,31 @@ int restore_msg_buff(MSGBUFF *msgbuff, size_t size)
     msgbuff->offset -= size;
     finish_msg_buff(msgbuff);
     return 0;
+}
+
+int proc_msg_buff(MSGBUFF *msgbuff, FIXEDFLD *fixedfld)
+{
+    int retv = 0;
+    int restore_size = 0;
+    int ii;
+
+    for (ii = 0; strlen(fixedfld[ii].field_name) > 0; ii++)
+    {
+        retv = read_msg_buff(msgbuff, &fixedfld[ii]);
+
+        if (retv & MSG_BUFFER_SCARCED)
+        {
+            if (restore_size > 0)
+                restore_msg_buff(msgbuff, restore_size);
+
+            finish_msg_buff(msgbuff);
+            return (MSG_BUFFER_SCARCED);
+        }
+
+        restore_size += *fixedfld[ii].field_length;
+    }
+
+    return (0);
 }
 
 /*

@@ -81,7 +81,7 @@ typedef struct
 typedef struct
 {
     PACKET_HEADER header;
-    MSG_BLOCK *msg_blocks;
+    MSG_BLOCK msg_block;
 } DWN_PACKET;
 
 // 3. Heartbeats
@@ -90,14 +90,83 @@ typedef struct
 // 4. End of Session
 #define UDP_DWN_EOS_MSGCNT_VALUE 0xFFFF
 
-/****************************/
-/* MoldUDP64 Request Packet */
-/****************************/
-#define UDP_REQ_SESSION_LEN 10
-#define UDP_REQ_SEQN_LEN 8
-#define UDP_REQ_REQMSGCNT_LEN 2
+/********************************/
+/* SoupBinTCP Downstream Packet */
+/********************************/
+#define TCP_HEADER 'h'
+#define TCP_DEBUG_TYPE '+'
+#define TCP_LOGIN_ACCEPTED_TYPE 'A'
+#define TCP_LOGIN_REJECTED_TYPE 'J'
+#define TCP_SEQN_DATA_PACKET_TYPE 'S'
+#define TCP_SERVER_HEARTBEAT_TYPE 'H'
+#define TCP_END_OF_SESSINO_TYPE 'Z'
+#define TCP_LOGIN_REQUEST_TYPE 'L'
+#define TCP_UNSEQN_DATA_TYPE 'U'
+#define TCP_CLIENT_HEARTBEAT_TYPE 'R'
+#define TCP_LOGOUT_REQUEST_TYPE 'O'
 
-// @ DECIMAL
+typedef struct
+{
+    uint64_t packet_length;
+    char packet_type;
+} SOUPBIN_TCP_HEADER;
+
+// Debug Packet("+")
+typedef struct
+{
+    char text[MAX_BUFFER_SIZE];
+} DEBUG_PACKET;
+
+// Login Accepted Packet("A")
+typedef struct
+{
+    char session[MAX_BUFFER_SIZE];
+    uint64_t seqn;
+} LOGIN_ACCEPTED_PACKET;
+
+// Login Rejected Packet("J")
+typedef struct
+{
+    char reason_code;
+} LOGIN_REJECTED_PACKET;
+#define PASSWORD_ERROR 'A'
+#define SESSION_ERROR 'S'
+
+// Data Packet
+typedef struct
+{
+    char message[MAX_BUFFER_SIZE];
+} DATA_PACKET;
+
+// Login Request Packet("L")
+typedef struct
+{
+    char username[MAX_BUFFER_SIZE];
+    char password[MAX_BUFFER_SIZE];
+    char session[MAX_BUFFER_SIZE];
+    uint64_t seqn;
+} LOGIN_REQUEST_PACKET;
+
+/* 서버 측에서 발송하는 패킷 */
+typedef struct
+{
+    SOUPBIN_TCP_HEADER header;
+    DEBUG_PACKET debug_packet;
+    LOGIN_ACCEPTED_PACKET login_accepted_packet;
+    LOGIN_REJECTED_PACKET login_rejected_packet;
+    DATA_PACKET sequenced_data_packet;
+} SERVER_SOUPBIN_TCP_PACKET;
+
+/* 클라이언트 측에서 발송하는 패킷 */
+typedef struct
+{
+    LOGIN_REQUEST_PACKET login_request_packet;
+    DATA_PACKET unsequenced_data_packet;
+} CLIENT_SOUPBIN_TCP_PACKET;
+
+/********************/
+/* Custom Data Type */
+/********************/
 typedef struct
 {
     uint64_t denominator;
@@ -521,6 +590,7 @@ time_t gettime_from_mid_sec(uint64_t seconds_from_midnight);
 int read_msg_buff(MSGBUFF *msgbuff, FIXEDFLD *fixedfld);
 int finish_msg_buff(MSGBUFF *msgbuff);
 int restore_msg_buff(MSGBUFF *msgbuff, size_t size);
+int proc_msg_buff(MSGBUFF *msgbuff, FIXEDFLD *fixedfld);
 void initialize_msg_buff(MSGBUFF *msgbuff);
 
 // TR Packet
@@ -540,7 +610,9 @@ void nas_smt_csv(FEP *fep, SMARTOPTION_TABLE *smt_table);
 /*************/
 /* moldudp.c */
 /*************/
-int parser_moldudp64_message_block(MSGBUFF *msgbuff, MSG_BLOCK *msgblock);
+#define FLAG_PACKET_HEADER 0x01
+#define FLAG_MSG_BLOCK 0x02 // 테스트 파일은 Message Block만 제공
+int parser_moldudp64_dwn_packet(MSGBUFF *msgbuff, DWN_PACKET *dwnPacket, int flag);
 
 /*************/
 /* symbcnv.c */

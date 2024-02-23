@@ -115,7 +115,7 @@ int start_analyze()
 
         // Initialize message buffer and TR_PACKET
         MSGBUFF msgbuff;
-        MSG_BLOCK message_block;
+        DWN_PACKET dwn_packet;
         char send_b[TR_PACKET_LEN];
         TR_PACKET *tr_packet = (TR_PACKET *)send_b;
 
@@ -138,7 +138,7 @@ int start_analyze()
             // Process MoldUDP64 message blocks
             while (1)
             {
-                retv = parser_moldudp64_message_block(&msgbuff, &message_block);
+                retv = parser_moldudp64_dwn_packet(&msgbuff, &dwn_packet, FLAG_MSG_BLOCK);
 
                 if (retv < 0)
                 {
@@ -153,7 +153,7 @@ int start_analyze()
                 else
                 {
                     // Allocate TR_PACKET and send to domain socket
-                    allocate_tr_packet(tr_packet, message_block.data, message_block.msgl);
+                    allocate_tr_packet(tr_packet, dwn_packet.msg_block.data, dwn_packet.msg_block.msgl);
 
                     if (sendto(domain_socket, send_b, TR_PACKET_LEN, 0, (struct sockaddr *)&target_addr, sizeof(target_addr)) < 0)
                     {
@@ -177,6 +177,10 @@ int start_analyze()
 
 int start_receive()
 {
+    /**************************/
+    /* 인프라 구축 완료 시 개발 */
+    /**************************/
+
     return (0);
 }
 
